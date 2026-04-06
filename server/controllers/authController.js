@@ -1,6 +1,7 @@
 const userModel = require('../models/userModel');
 const ratingModel = require('../models/ratingModel');
 const notificationModel = require('../models/notificationModel');
+const { isRegistrationOtpEnabled } = require('../services/authModeService');
 const { hashPassword, verifyPassword } = require('../services/passwordService');
 const {
   generateOtpCode,
@@ -20,12 +21,14 @@ const {
 
 const OTP_MAX_ATTEMPTS = 5;
 const INVALID_OTP_MESSAGE = 'Invalid or expired verification code.';
-const GENERIC_OTP_RESPONSE = {
-  success: true,
-  requiresVerification: true,
-  message: 'If the email is eligible, a verification code has been sent.',
-  deliveryMode: 'email'
-};
+function getGenericOtpResponse() {
+  return {
+    success: true,
+    requiresVerification: true,
+    message: 'If the email is eligible, a verification code has been sent.',
+    deliveryMode: 'email'
+  };
+}
 
 function regenerateSession(req) {
   return new Promise((resolve, reject) => {
@@ -41,7 +44,13 @@ function regenerateSession(req) {
 }
 
 function sendGenericOtpResponse(res) {
-  res.json(GENERIC_OTP_RESPONSE);
+  res.json(getGenericOtpResponse());
+}
+
+function registerConfig(req, res) {
+  res.json({
+    otpRequired: isRegistrationOtpEnabled()
+  });
 }
 
 async function requestRegisterOtp(req, res) {
@@ -67,6 +76,37 @@ async function requestRegisterOtp(req, res) {
   }
 
   const existingUser = await userModel.findByEmail(email);
+
+  if (!isRegistrationOtpEnabled()) {
+    if (existingUser) {
+      res.status(400).json({ message: 'Account already exists' });
+      return;
+    }
+
+    try {
+      const userId = await userModel.createUser({
+        username,
+        fullName,
+        email,
+        password: hashPassword(password),
+        address: contactFields.address,
+        phone: contactFields.phone,
+        country: contactFields.country
+      });
+
+      await regenerateSession(req);
+      req.session.userId = userId;
+      res.json({
+        success: true,
+        requiresVerification: false,
+        message: 'Account created.'
+      });
+    } catch (error) {
+      res.status(400).json({ message: 'Account already exists' });
+    }
+
+    return;
+  }
 
   if (existingUser) {
     sendGenericOtpResponse(res);
@@ -98,6 +138,11 @@ async function requestRegisterOtp(req, res) {
 }
 
 async function verifyRegisterOtp(req, res) {
+  if (!isRegistrationOtpEnabled()) {
+    res.status(400).json({ message: 'Verification is currently disabled.' });
+    return;
+  }
+
   const email = normalizeEmail(req.body.email);
   const otp = typeof req.body.otp === 'string' ? req.body.otp.trim() : '';
 
@@ -339,6 +384,7 @@ async function updateMe(req, res) {
 }
 
 module.exports = {
+  registerConfig,
   requestRegisterOtp,
   verifyRegisterOtp,
   login,

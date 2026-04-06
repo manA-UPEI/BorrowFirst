@@ -6,6 +6,7 @@ delete process.env.DATABASE_URL;
 process.env.SESSION_SECRET = 'test-session-secret-1234567890';
 process.env.APP_ORIGIN = 'http://127.0.0.1';
 process.env.SESSION_NAME = 'borrowfirst.sid';
+process.env.REGISTRATION_OTP_ENABLED = 'true';
 
 const createApp = require('../../server/app');
 const initializeDatabase = require('../../server/db/init');
@@ -300,6 +301,49 @@ test('OTP requests hide account existence and verification codes lock out after 
     ['otp-user@upei.ca']
   );
   assert.equal(pendingRegistration, undefined);
+});
+
+test('registration can create an account immediately when OTP is disabled', async () => {
+  const originalOtpSetting = process.env.REGISTRATION_OTP_ENABLED;
+  process.env.REGISTRATION_OTP_ENABLED = 'false';
+
+  try {
+    const registerResponse = await apiRequest('/api/register/request-otp', {
+      method: 'POST',
+      body: {
+        fullName: 'Direct Signup',
+        username: 'directsignup',
+        email: 'directsignup@upei.ca',
+        phone: '+19025550115',
+        country: 'Canada',
+        address: '654 Campus Avenue',
+        password: 'AnotherStrongPass123!'
+      }
+    });
+
+    assert.equal(registerResponse.response.status, 200);
+    assert.deepEqual(registerResponse.payload, {
+      success: true,
+      requiresVerification: false,
+      message: 'Account created.'
+    });
+
+    const cookie = readSessionCookie(registerResponse.response);
+    const meResponse = await apiRequest('/api/me', { cookie });
+    const createdUser = await get('SELECT id FROM users WHERE email = ?', ['directsignup@upei.ca']);
+    const pendingRegistration = await get(
+      'SELECT id FROM pending_registrations WHERE email = ?',
+      ['directsignup@upei.ca']
+    );
+
+    assert.ok(cookie);
+    assert.equal(meResponse.response.status, 200);
+    assert.equal(meResponse.payload.email, 'directsignup@upei.ca');
+    assert.ok(createdUser);
+    assert.equal(pendingRegistration, undefined);
+  } finally {
+    process.env.REGISTRATION_OTP_ENABLED = originalOtpSetting;
+  }
 });
 
 test('product creation rejects unsafe image URLs', async () => {

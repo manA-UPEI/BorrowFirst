@@ -52,6 +52,7 @@ Optional but recommended for deployment:
 - `TRUST_PROXY=1` when running behind a reverse proxy or platform load balancer
 - `SESSION_NAME` if you want a custom cookie name
 - `TRANSACTION_CODE_SECRET` if you do not want transaction codes derived from `SESSION_SECRET`
+- `REGISTRATION_OTP_ENABLED=false` if you want to temporarily bypass OTP verification and create accounts immediately
 
 3. Start the app:
 
@@ -96,9 +97,11 @@ npm run seed:demo
 - Origin checks protect all state-changing API routes.
 - PostgreSQL-backed rate limiting is applied to login, OTP, and rating submission endpoints.
 - In production, the app requires a configured `SESSION_SECRET`, `APP_ORIGIN`, `DATABASE_URL`, and OTP email delivery.
+- For free Render deployments, use `RESEND_API_KEY` instead of SMTP because free Render web services cannot send mail over SMTP port `587`.
+- If `REGISTRATION_OTP_ENABLED=false`, OTP delivery is bypassed and email credentials are not required.
 
 ## Notes
 
 - Outside production, if `DATABASE_URL` is omitted, the app falls back to an in-memory Postgres-compatible database for tests and temporary local development.
-- Uploaded item images are stored as data URLs in PostgreSQL for simplicity, with type and size restrictions.
+- Uploaded item images are stored in Cloudinary, with image metadata stored in PostgreSQL.
 - OTP signup email delivery requires either Resend or SMTP credentials in `.env`.

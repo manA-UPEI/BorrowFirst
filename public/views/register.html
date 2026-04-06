@@ -14,15 +14,15 @@
           <span class="brand-chip">BorrowFirst at UPEI</span>
           <span class="section-kicker">Create Your Account</span>
           <h1>Join the campus borrowing network.</h1>
-          <p class="subtitle">Set up your profile once, verify your UPEI email, and start borrowing or lending with a cleaner, more trustworthy workflow.</p>
+          <p class="subtitle" id="registerHeroSubtitle">Set up your profile once and start borrowing or lending with a cleaner, more trustworthy workflow.</p>
           <div class="auth-highlight-grid">
             <article class="auth-highlight">
               <strong>Profile-first trust</strong>
               <p>Phone, address, and country details make handoffs more dependable.</p>
             </article>
             <article class="auth-highlight">
-              <strong>Email verification</strong>
-              <p>A 6-digit code confirms your campus identity before the account goes live.</p>
+              <strong>Flexible sign-in</strong>
+              <p>Account verification can evolve without replacing the full registration flow.</p>
             </article>
             <article class="auth-highlight">
               <strong>Built for repeat use</strong>
@@ -45,7 +45,7 @@
             </div>
             <div class="auth-proof-card">
               <span>02</span>
-              <p>Verify your email with OTP.</p>
+              <p id="registerStepTwoCopy">Complete verification when required.</p>
             </div>
             <div class="auth-proof-card">
               <span>03</span>
@@ -59,7 +59,7 @@
         <div class="auth-card-top">
           <span class="section-kicker">Registration</span>
           <h2>Create Account</h2>
-          <p class="subtitle">Complete your profile, verify your UPEI email, then activate your account.</p>
+          <p class="subtitle" id="registerPageIntro">Complete your profile to activate your account.</p>
         </div>
         <div class="auth-steps">
           <span class="step-pill is-current" id="detailsStepPill">1. Details</span>
@@ -97,7 +97,7 @@
               <label for="address">Address</label>
               <textarea id="address" rows="4" placeholder="123 University Ave, Charlottetown, PE" autocomplete="street-address" required></textarea>
             </div>
-            <button type="submit" class="primary" id="sendOtpButton">Send Verification Code</button>
+            <button type="submit" class="primary" id="sendOtpButton">Continue</button>
           </div>
 
           <div id="registerVerifyStep" class="auth-step hidden">

@@ -1,4 +1,4 @@
-import { postJson } from './api.js';
+import { getJson, postJson } from './api.js';
 import {
   getAddressValidationMessage,
   getCountryValidationMessage,
@@ -8,6 +8,7 @@ import {
 } from './helpers.js';
 
 const form = document.getElementById('registerForm');
+const authSteps = document.querySelector('.auth-steps');
 const detailsStep = document.getElementById('registerDetailsStep');
 const verifyStep = document.getElementById('registerVerifyStep');
 const fullNameInput = document.getElementById('fullName');
@@ -23,8 +24,13 @@ const backToDetailsButton = document.getElementById('backToDetailsButton');
 const detailsStepPill = document.getElementById('detailsStepPill');
 const verifyStepPill = document.getElementById('verifyStepPill');
 const errorElement = document.getElementById('error');
+const registerPageIntro = document.getElementById('registerPageIntro');
+const registerHeroSubtitle = document.getElementById('registerHeroSubtitle');
+const registerStepTwoCopy = document.getElementById('registerStepTwoCopy');
+const sendOtpButton = document.getElementById('sendOtpButton');
 
 let awaitingOtp = false;
+let otpRequired = true;
 const DISPLAY_NAME_MAX_LENGTH = 40;
 const FULL_NAME_MAX_LENGTH = 80;
 const PASSWORD_MIN_LENGTH = 12;
@@ -33,6 +39,34 @@ const PASSWORD_MAX_LENGTH = 128;
 function setStepState(isVerificationStep) {
   detailsStepPill?.classList.toggle('is-current', !isVerificationStep);
   verifyStepPill?.classList.toggle('is-current', isVerificationStep);
+}
+
+function applyRegisterConfig(config = {}) {
+  otpRequired = config.otpRequired !== false;
+  authSteps?.classList.toggle('hidden', !otpRequired);
+  verifyStepPill?.classList.toggle('hidden', !otpRequired);
+
+  if (sendOtpButton) {
+    sendOtpButton.textContent = otpRequired ? 'Continue' : 'Create Account';
+  }
+
+  if (!otpRequired) {
+    awaitingOtp = false;
+    verifyStep.classList.add('hidden');
+    detailsStep.classList.remove('hidden');
+
+    if (registerPageIntro) {
+      registerPageIntro.textContent = 'Complete your profile to activate your account. Email verification is temporarily disabled.';
+    }
+
+    if (registerHeroSubtitle) {
+      registerHeroSubtitle.textContent = 'Set up your profile once and start borrowing or lending with a simpler sign-up flow for now.';
+    }
+
+    if (registerStepTwoCopy) {
+      registerStepTwoCopy.textContent = 'Account setup is completed immediately.';
+    }
+  }
 }
 
 function getRegistrationPayload() {
@@ -123,8 +157,14 @@ async function handleSendOtp() {
   }
 
   try {
-    await postJson('/api/register/request-otp', payload);
+    const response = await postJson('/api/register/request-otp', payload);
     errorElement.textContent = '';
+
+    if (!response?.requiresVerification) {
+      redirectTo('/home');
+      return;
+    }
+
     showVerificationStep(payload.email);
   } catch (error) {
     errorElement.textContent = error.message || 'Registration failed.';
@@ -164,3 +204,9 @@ backToDetailsButton.addEventListener('click', () => {
   errorElement.textContent = '';
   showDetailsStep();
 });
+
+try {
+  applyRegisterConfig(await getJson('/api/register/config'));
+} catch (error) {
+  applyRegisterConfig({ otpRequired: true });
+}

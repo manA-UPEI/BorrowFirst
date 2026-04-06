@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const createApp = require('./server/app');
+const { isRegistrationOtpEnabled } = require('./server/services/authModeService');
 const { getAppOrigin } = require('./server/services/originService');
 
 function hasEmailConfig() {
@@ -62,7 +63,7 @@ function validateEnvironment() {
     }
   }
 
-  if (isProduction && !hasEmailConfig()) {
+  if (isProduction && isRegistrationOtpEnabled() && !hasEmailConfig()) {
     throw new Error('OTP email delivery must be configured in production.');
   }
 

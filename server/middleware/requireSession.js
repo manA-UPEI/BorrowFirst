@@ -2,6 +2,7 @@ function requireSession() {
   const publicPages = new Set(['/', '/login', '/register']);
   const publicApiRoutes = new Set([
     '/api/login',
+    '/api/register/config',
     '/api/register/request-otp',
     '/api/register/verify-otp'
   ]);

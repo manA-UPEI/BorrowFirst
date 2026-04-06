@@ -44,6 +44,7 @@ function createApiRoutes() {
     key: (req) => `${req.ip || 'unknown'}:${req.session?.userId || 'anonymous'}`
   });
 
+  router.get('/register/config', asyncHandler(authController.registerConfig));
   router.post('/register/request-otp', registerLimiter, asyncHandler(authController.requestRegisterOtp));
   router.post('/register/verify-otp', verifyLimiter, asyncHandler(authController.verifyRegisterOtp));
   router.post('/login', loginLimiter, asyncHandler(authController.login));
