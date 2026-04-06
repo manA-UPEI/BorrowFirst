@@ -1,0 +1,19 @@
+<svg width="960" height="640" viewBox="0 0 960 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="640" fill="#F8F3EB"/>
+  <rect width="320" height="640" fill="#8D4B2C"/>
+  <rect x="640" width="320" height="640" fill="#246545"/>
+  <circle cx="480" cy="164" r="112" fill="#F5E8D7"/>
+  <circle cx="480" cy="164" r="82" fill="#FFFFFF"/>
+  <path d="M330 470C330 404.771 382.771 352 448 352H512C577.229 352 630 404.771 630 470V488H330V470Z" fill="#FFFFFF"/>
+  <path d="M354 488H606V532C606 549.673 591.673 564 574 564H386C368.327 564 354 549.673 354 532V488Z" fill="#EEE4D5"/>
+  <rect x="420" y="404" width="40" height="112" rx="20" fill="#D7E8D9"/>
+  <rect x="500" y="404" width="40" height="112" rx="20" fill="#D7E8D9"/>
+  <path d="M394 332L480 270L566 332" stroke="#246545" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M304 212C344 234 382 238 418 224" stroke="#F5E8D7" stroke-width="18" stroke-linecap="round"/>
+  <path d="M542 224C578 238 616 234 656 212" stroke="#D7E8D9" stroke-width="18" stroke-linecap="round"/>
+  <path d="M232 560H728" stroke="#1B4D34" stroke-width="16" stroke-linecap="round"/>
+  <text x="480" y="142" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="46" fill="#1B4D34">BorrowFirst</text>
+  <text x="480" y="190" text-anchor="middle" font-family="'Trebuchet MS', 'Segoe UI', sans-serif" font-size="20" fill="#8D4B2C" letter-spacing="4">
+    CAMPUS LISTING
+  </text>
+</svg>

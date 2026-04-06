@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BorrowFirst | Login</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="page-auth">
+  <main class="auth-container">
+    <section class="auth-layout">
+      <div class="auth-hero">
+        <div class="auth-hero-top">
+          <span class="brand-chip">BorrowFirst at UPEI</span>
+          <span class="section-kicker">Campus Exchange</span>
+          <h1>Borrow smarter. Lend with confidence.</h1>
+          <p class="subtitle">A cleaner campus lending experience for students who need fast access to gear, clearer handoffs, and less back-and-forth.</p>
+          <div class="auth-highlight-grid">
+            <article class="auth-highlight">
+              <strong>Verified access</strong>
+              <p>Restricted to the UPEI community through campus email sign-in.</p>
+            </article>
+            <article class="auth-highlight">
+              <strong>Tracked handoffs</strong>
+              <p>Pickup and return codes reduce confusion during exchanges.</p>
+            </article>
+            <article class="auth-highlight">
+              <strong>Visible reputation</strong>
+              <p>Ratings and profiles help reliable lenders and borrowers stand out.</p>
+            </article>
+          </div>
+        </div>
+        <div class="auth-hero-bottom">
+          <div class="auth-gallery">
+            <figure class="mosaic-card mosaic-wide"><img src="/images/laptop.jpeg" alt="Laptop listing preview" /></figure>
+            <figure class="mosaic-card"><img src="/images/bag.jpeg" alt="Bag listing preview" /></figure>
+            <figure class="mosaic-card mosaic-tall"><img src="/images/phone.jpeg" alt="Phone listing preview" /></figure>
+            <figure class="mosaic-card"><img src="/images/cap.jpeg" alt="Cap listing preview" /></figure>
+            <figure class="mosaic-card"><img src="/images/drill.svg" alt="Drill listing preview" /></figure>
+          </div>
+          <div class="auth-proof">
+            <div class="auth-proof-card">
+              <span>01</span>
+              <p>Find what is available now.</p>
+            </div>
+            <div class="auth-proof-card">
+              <span>02</span>
+              <p>Coordinate pickup with less friction.</p>
+            </div>
+            <div class="auth-proof-card">
+              <span>03</span>
+              <p>Keep returns and ratings organized.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-card-top">
+          <span class="section-kicker">Sign In</span>
+          <h2>Welcome back</h2>
+          <p class="subtitle">Use your UPEI email and password to open your lending dashboard.</p>
+        </div>
+        <form id="loginForm" class="auth-form">
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="you@upei.ca" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required />
+          </div>
+          <button type="submit" class="primary">Login</button>
+          <p id="error" class="error"></p>
+        </form>
+        <p class="auth-footer">Need an account? <a href="/register">Register here</a></p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/login.js"></script>
+</body>
+</html>

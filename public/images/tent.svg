@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <rect width="640" height="400" fill="#e7f5ec" />
+  <polygon points="120,320 320,120 520,320" fill="#2d7a4f" />
+  <polygon points="240,320 320,200 400,320" fill="#1b5e3c" />
+  <text x="160" y="100" font-family="Segoe UI" font-size="28" fill="#1b5e3c">Camping Tent</text>
+</svg>

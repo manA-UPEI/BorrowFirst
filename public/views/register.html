@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BorrowFirst | Register</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="page-auth">
+  <main class="auth-container">
+    <section class="auth-layout">
+      <div class="auth-hero">
+        <div class="auth-hero-top">
+          <span class="brand-chip">BorrowFirst at UPEI</span>
+          <span class="section-kicker">Create Your Account</span>
+          <h1>Join the campus borrowing network.</h1>
+          <p class="subtitle">Set up your profile once, verify your UPEI email, and start borrowing or lending with a cleaner, more trustworthy workflow.</p>
+          <div class="auth-highlight-grid">
+            <article class="auth-highlight">
+              <strong>Profile-first trust</strong>
+              <p>Phone, address, and country details make handoffs more dependable.</p>
+            </article>
+            <article class="auth-highlight">
+              <strong>Email verification</strong>
+              <p>A 6-digit code confirms your campus identity before the account goes live.</p>
+            </article>
+            <article class="auth-highlight">
+              <strong>Built for repeat use</strong>
+              <p>Ratings and history accumulate as you keep lending within the community.</p>
+            </article>
+          </div>
+        </div>
+        <div class="auth-hero-bottom">
+          <div class="auth-gallery">
+            <figure class="mosaic-card mosaic-wide"><img src="/images/tent.svg" alt="Tent listing preview" /></figure>
+            <figure class="mosaic-card"><img src="/images/cap.jpeg" alt="Cap listing preview" /></figure>
+            <figure class="mosaic-card mosaic-tall"><img src="/images/laptop.jpeg" alt="Laptop listing preview" /></figure>
+            <figure class="mosaic-card"><img src="/images/phone.jpeg" alt="Phone listing preview" /></figure>
+            <figure class="mosaic-card"><img src="/images/bike.svg" alt="Bike listing preview" /></figure>
+          </div>
+          <div class="auth-proof">
+            <div class="auth-proof-card">
+              <span>01</span>
+              <p>Enter your profile details.</p>
+            </div>
+            <div class="auth-proof-card">
+              <span>02</span>
+              <p>Verify your email with OTP.</p>
+            </div>
+            <div class="auth-proof-card">
+              <span>03</span>
+              <p>Start lending and borrowing.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-card-top">
+          <span class="section-kicker">Registration</span>
+          <h2>Create Account</h2>
+          <p class="subtitle">Complete your profile, verify your UPEI email, then activate your account.</p>
+        </div>
+        <div class="auth-steps">
+          <span class="step-pill is-current" id="detailsStepPill">1. Details</span>
+          <span class="step-pill" id="verifyStepPill">2. Verify</span>
+        </div>
+        <form id="registerForm" class="auth-form">
+          <div id="registerDetailsStep" class="auth-step">
+            <div class="field">
+              <label for="fullName">Full Name</label>
+              <input type="text" id="fullName" placeholder="Your full name" autocomplete="name" maxlength="80" required />
+            </div>
+            <div class="field">
+              <label for="username">Display Name</label>
+              <input type="text" id="username" placeholder="Choose a display name" autocomplete="nickname" maxlength="40" required />
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="you@upei.ca" autocomplete="email" required />
+              </div>
+              <div class="field">
+                <label for="phone">Phone</label>
+                <input type="tel" id="phone" placeholder="+1 902 555 0100" autocomplete="tel" inputmode="tel" required />
+              </div>
+              <div class="field">
+                <label for="country">Country</label>
+                <input type="text" id="country" placeholder="Canada" autocomplete="country-name" required />
+              </div>
+              <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="12 to 128 characters" autocomplete="new-password" minlength="12" maxlength="128" required />
+              </div>
+            </div>
+            <div class="field">
+              <label for="address">Address</label>
+              <textarea id="address" rows="4" placeholder="123 University Ave, Charlottetown, PE" autocomplete="street-address" required></textarea>
+            </div>
+            <button type="submit" class="primary" id="sendOtpButton">Send Verification Code</button>
+          </div>
+
+          <div id="registerVerifyStep" class="auth-step hidden">
+            <p class="subtitle" id="otpHint">We sent a 6-digit verification code to your email.</p>
+            <div class="field">
+              <label for="otp">Verification Code</label>
+              <input type="text" id="otp" inputmode="numeric" maxlength="6" placeholder="123456" />
+            </div>
+            <button type="submit" class="primary" id="verifyOtpButton">Verify and Create Account</button>
+            <button type="button" class="ghost" id="backToDetailsButton">Edit Details</button>
+          </div>
+
+          <p id="error" class="error"></p>
+        </form>
+        <p class="auth-footer">Already registered? <a href="/login">Login here</a></p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/register.js"></script>
+</body>
+</html>

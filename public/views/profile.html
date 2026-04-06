@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BorrowFirst | Profile</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="page-profile">
+  <header class="app-header">
+    <div class="header-block">
+      <span class="brand-chip">BorrowFirst at UPEI</span>
+      <div class="header-copy">
+        <span class="section-kicker">Member Profile</span>
+        <h1 id="profilePageTitle">Your Profile</h1>
+        <p class="subtitle" id="profilePageSubtitle">See your account details and latest ratings.</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a class="ghost hidden" id="ownProfileLink" href="/profile">Your Profile</a>
+      <a class="ghost" href="/home">Home</a>
+      <a class="ghost" href="/requests">Requests</a>
+      <a class="ghost" href="/borrowing">Borrowing</a>
+      <a class="ghost" href="/listings">Listings</a>
+      <a class="ghost is-current" href="/profile">Profile</a>
+      <button class="ghost" id="logoutButton" type="button">Logout</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <section class="profile-panel">
+      <div class="profile-header">
+        <div>
+          <span class="section-kicker">Account Snapshot</span>
+          <h2 id="profileUsername">Username</h2>
+          <p class="subtitle" id="profileEmail">Loading profile...</p>
+        </div>
+        <div class="profile-score">
+          <span class="profile-rating" id="profileRating">--</span>
+          <span id="profileCount">0 ratings</span>
+        </div>
+      </div>
+      <div class="profile-details">
+        <div>
+          <p class="subtitle" id="profileFullName">Full name not set</p>
+          <div class="profile-meta" id="profileMeta"></div>
+        </div>
+        <div>
+          <p class="subtitle">Recent ratings</p>
+          <ul id="profileRatingsList" class="ratings-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="profileEditSection">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">Profile Studio</span>
+          <h2>Edit Details</h2>
+          <p class="subtitle">Customize how your profile appears and keep your contact details ready for lending handoffs.</p>
+        </div>
+      </div>
+      <form id="profileForm" class="lend-form">
+        <div class="form-grid">
+          <div class="field">
+            <label for="profileDisplayNameInput">Display Name</label>
+            <input id="profileDisplayNameInput" type="text" maxlength="40" required />
+          </div>
+          <div class="field">
+            <label for="profileFullNameInput">Full Name</label>
+            <input id="profileFullNameInput" type="text" maxlength="80" required />
+          </div>
+          <div class="field">
+            <label for="profileEmailInput">Email</label>
+            <input id="profileEmailInput" type="email" required />
+          </div>
+          <div class="field">
+            <label for="profilePhoneInput">Phone</label>
+            <input id="profilePhoneInput" type="tel" placeholder="+1 902 555 0100" autocomplete="tel" inputmode="tel" required />
+          </div>
+          <div class="field">
+            <label for="profileCountryInput">Country</label>
+            <input id="profileCountryInput" type="text" placeholder="Canada" autocomplete="country-name" required />
+          </div>
+          <div class="field profile-address-field">
+            <label for="profileAddressInput">Address</label>
+            <textarea id="profileAddressInput" rows="4" placeholder="123 University Ave, Charlottetown, PE" autocomplete="street-address" required></textarea>
+          </div>
+        </div>
+        <button type="submit" class="primary">Save Details</button>
+        <p id="profileMessage" class="error"></p>
+      </form>
+    </section>
+
+    <section class="panel" id="profileHistorySection">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">Activity Timeline</span>
+          <h2>History</h2>
+          <p class="subtitle">Track your lending and borrowing activity across requests, active loans, and completed returns.</p>
+        </div>
+      </div>
+      <ul id="historyList" class="history-list"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="/js/profile.js"></script>
+</body>
+</html>

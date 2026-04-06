@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BorrowFirst | Requests</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="page-requests">
+  <header class="app-header">
+    <div class="header-block">
+      <span class="brand-chip">BorrowFirst at UPEI</span>
+      <div class="header-copy">
+        <span class="section-kicker">Lender Queue</span>
+        <h1>Borrow Requests</h1>
+        <p class="subtitle">Approve requests, verify pickups, and confirm returns for the items you listed.</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a class="ghost" href="/home">Home</a>
+      <a class="ghost is-current" href="/requests">Requests</a>
+      <a class="ghost" href="/borrowing">Borrowing</a>
+      <a class="ghost" href="/listings">Listings</a>
+      <a class="ghost" href="/profile">Profile</a>
+      <button class="ghost" id="logoutButton" type="button">Logout</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <section class="panel page-intro-card">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">Three-Step Flow</span>
+          <h2>Handle every lending request with less friction.</h2>
+          <p class="subtitle">BorrowFirst keeps approval, pickup verification, and return confirmation aligned so nothing gets lost between messages.</p>
+        </div>
+      </div>
+      <div class="milestone-row">
+        <article class="milestone-card">
+          <span>01</span>
+          <strong>Approve</strong>
+          <p>Confirm the request and define the borrower meetup time.</p>
+        </article>
+        <article class="milestone-card">
+          <span>02</span>
+          <strong>Verify pickup</strong>
+          <p>Use the borrower's code to mark the handoff as complete.</p>
+        </article>
+        <article class="milestone-card">
+          <span>03</span>
+          <strong>Confirm return</strong>
+          <p>Close the loop after the borrower returns the item.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="notification-panel">
+      <div class="section-header">
+        <div>
+          <span class="section-kicker">Live Queue</span>
+          <h2>Open Request Actions</h2>
+          <p class="subtitle">Everything currently requiring action appears here with the right controls for the current stage.</p>
+        </div>
+      </div>
+      <div id="notificationList" class="stack"></div>
+      <p id="notificationMessage" class="error"></p>
+    </section>
+  </main>
+
+  <script type="module" src="/js/requests.js"></script>
+</body>
+</html>

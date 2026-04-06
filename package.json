@@ -1,0 +1,31 @@
+{
+  "name": "borrowfirst",
+  "version": "1.0.0",
+  "description": "BorrowFirst local lending app",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "seed:demo": "node scripts/seedDemo.js",
+    "test": "node --test",
+    "security:check": "npm test && npm audit --omit=dev"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.1",
+    "express": "^4.22.1",
+    "express-session": "^1.19.0",
+    "multer": "^2.1.1",
+    "nodemailer": "^8.0.4",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0",
+    "pg-mem": "^3.0.14"
+  },
+  "overrides": {
+    "path-to-regexp": "0.1.13",
+    "qs": "6.14.2"
+  }
+}
