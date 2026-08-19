@@ -7,57 +7,36 @@
   <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body class="page-auth">
-  <main class="auth-container">
-    <section class="auth-layout">
-      <div class="auth-hero">
-        <div class="auth-hero-top">
-          <span class="brand-chip">BorrowFirst at UPEI</span>
-          <span class="section-kicker">Campus Exchange</span>
-          <h1>Borrow smarter. Lend with confidence.</h1>
-          <p class="subtitle">A cleaner campus lending experience for students who need fast access to gear, clearer handoffs, and less back-and-forth.</p>
-          <div class="auth-highlight-grid">
-            <article class="auth-highlight">
-              <strong>Verified access</strong>
-              <p>Restricted to the UPEI community through campus email sign-in.</p>
-            </article>
-            <article class="auth-highlight">
-              <strong>Tracked handoffs</strong>
-              <p>Pickup and return codes reduce confusion during exchanges.</p>
-            </article>
-            <article class="auth-highlight">
-              <strong>Visible reputation</strong>
-              <p>Ratings and profiles help reliable lenders and borrowers stand out.</p>
-            </article>
-          </div>
-        </div>
-        <div class="auth-hero-bottom">
-          <div class="auth-gallery">
-            <figure class="mosaic-card mosaic-wide"><img src="/images/laptop.jpeg" alt="Laptop listing preview" /></figure>
-            <figure class="mosaic-card"><img src="/images/bag.jpeg" alt="Bag listing preview" /></figure>
-            <figure class="mosaic-card mosaic-tall"><img src="/images/phone.jpeg" alt="Phone listing preview" /></figure>
-            <figure class="mosaic-card"><img src="/images/cap.jpeg" alt="Cap listing preview" /></figure>
-            <figure class="mosaic-card"><img src="/images/drill.svg" alt="Drill listing preview" /></figure>
-          </div>
-          <div class="auth-proof">
-            <div class="auth-proof-card">
-              <span>01</span>
-              <p>Find what is available now.</p>
-            </div>
-            <div class="auth-proof-card">
-              <span>02</span>
-              <p>Coordinate pickup with less friction.</p>
-            </div>
-            <div class="auth-proof-card">
-              <span>03</span>
-              <p>Keep returns and ratings organized.</p>
-            </div>
-          </div>
-        </div>
+  <main class="auth-shell">
+    <aside class="auth-aside">
+      <a class="brand brand-invert" href="/login">
+        <span class="brand-mark">BF</span>
+        <span class="brand-name">BorrowFirst</span>
+      </a>
+      <div class="auth-aside-body">
+        <h1>Borrow smarter. Lend with confidence.</h1>
+        <p>Campus lending for students who need fast access to gear, clearer handoffs, and less back-and-forth.</p>
+        <ul class="auth-points">
+          <li>
+            <strong>Verified access</strong>
+            <span>Restricted to the UPEI community through campus email sign-in.</span>
+          </li>
+          <li>
+            <strong>Tracked handoffs</strong>
+            <span>Pickup and return codes reduce confusion during exchanges.</span>
+          </li>
+          <li>
+            <strong>Visible reputation</strong>
+            <span>Ratings and profiles help reliable lenders and borrowers stand out.</span>
+          </li>
+        </ul>
       </div>
+      <p class="auth-aside-foot">University of Prince Edward Island</p>
+    </aside>
 
+    <section class="auth-main">
       <div class="auth-card">
         <div class="auth-card-top">
-          <span class="section-kicker">Sign In</span>
           <h2>Welcome back</h2>
           <p class="subtitle">Use your UPEI email and password to open your lending dashboard.</p>
         </div>
@@ -70,7 +49,7 @@
             <label for="password">Password</label>
             <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required />
           </div>
-          <button type="submit" class="primary">Login</button>
+          <button type="submit" class="primary large">Log in</button>
           <p id="error" class="error"></p>
         </form>
         <p class="auth-footer"><a href="/reset-password">Forgot password?</a></p>

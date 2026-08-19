@@ -7,58 +7,37 @@
   <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body class="page-auth">
-  <main class="auth-container">
-    <section class="auth-layout">
-      <div class="auth-hero">
-        <div class="auth-hero-top">
-          <span class="brand-chip">BorrowFirst at UPEI</span>
-          <span class="section-kicker">Create Your Account</span>
-          <h1>Join the campus borrowing network.</h1>
-          <p class="subtitle" id="registerHeroSubtitle">Set up your profile once and start borrowing or lending with a cleaner, more trustworthy workflow.</p>
-          <div class="auth-highlight-grid">
-            <article class="auth-highlight">
-              <strong>Profile-first trust</strong>
-              <p>Phone, address, and country details make handoffs more dependable.</p>
-            </article>
-            <article class="auth-highlight">
-              <strong>Flexible sign-in</strong>
-              <p>Account verification can evolve without replacing the full registration flow.</p>
-            </article>
-            <article class="auth-highlight">
-              <strong>Built for repeat use</strong>
-              <p>Ratings and history accumulate as you keep lending within the community.</p>
-            </article>
-          </div>
-        </div>
-        <div class="auth-hero-bottom">
-          <div class="auth-gallery">
-            <figure class="mosaic-card mosaic-wide"><img src="/images/tent.svg" alt="Tent listing preview" /></figure>
-            <figure class="mosaic-card"><img src="/images/cap.jpeg" alt="Cap listing preview" /></figure>
-            <figure class="mosaic-card mosaic-tall"><img src="/images/laptop.jpeg" alt="Laptop listing preview" /></figure>
-            <figure class="mosaic-card"><img src="/images/phone.jpeg" alt="Phone listing preview" /></figure>
-            <figure class="mosaic-card"><img src="/images/bike.svg" alt="Bike listing preview" /></figure>
-          </div>
-          <div class="auth-proof">
-            <div class="auth-proof-card">
-              <span>01</span>
-              <p>Enter your profile details.</p>
-            </div>
-            <div class="auth-proof-card">
-              <span>02</span>
-              <p id="registerStepTwoCopy">Complete verification when required.</p>
-            </div>
-            <div class="auth-proof-card">
-              <span>03</span>
-              <p>Start lending and borrowing.</p>
-            </div>
-          </div>
-        </div>
+  <main class="auth-shell">
+    <aside class="auth-aside">
+      <a class="brand brand-invert" href="/login">
+        <span class="brand-mark">BF</span>
+        <span class="brand-name">BorrowFirst</span>
+      </a>
+      <div class="auth-aside-body">
+        <h1>Join the campus borrowing network.</h1>
+        <p id="registerHeroSubtitle">Set up your profile once and start borrowing or lending with a cleaner, more trustworthy workflow.</p>
+        <ul class="auth-points">
+          <li>
+            <strong>Profile-first trust</strong>
+            <span>Phone, address, and country details make handoffs more dependable.</span>
+          </li>
+          <li>
+            <strong>Straightforward signup</strong>
+            <span id="registerStepTwoCopy">Complete email verification when required.</span>
+          </li>
+          <li>
+            <strong>Built for repeat use</strong>
+            <span>Ratings and history accumulate as you keep lending within the community.</span>
+          </li>
+        </ul>
       </div>
+      <p class="auth-aside-foot">University of Prince Edward Island</p>
+    </aside>
 
+    <section class="auth-main">
       <div class="auth-card">
         <div class="auth-card-top">
-          <span class="section-kicker">Registration</span>
-          <h2>Create Account</h2>
+          <h2>Create account</h2>
           <p class="subtitle" id="registerPageIntro">Complete your profile to activate your account.</p>
         </div>
         <div class="auth-steps">
@@ -95,9 +74,9 @@
             </div>
             <div class="field">
               <label for="address">Address</label>
-              <textarea id="address" rows="4" placeholder="123 University Ave, Charlottetown, PE" autocomplete="street-address" required></textarea>
+              <textarea id="address" rows="3" placeholder="123 University Ave, Charlottetown, PE" autocomplete="street-address" required></textarea>
             </div>
-            <button type="submit" class="primary" id="sendOtpButton">Continue</button>
+            <button type="submit" class="primary large" id="sendOtpButton">Continue</button>
           </div>
 
           <div id="registerVerifyStep" class="auth-step hidden">
@@ -106,8 +85,8 @@
               <label for="otp">Verification Code</label>
               <input type="text" id="otp" inputmode="numeric" maxlength="6" placeholder="123456" />
             </div>
-            <button type="submit" class="primary" id="verifyOtpButton">Verify and Create Account</button>
-            <button type="button" class="ghost" id="backToDetailsButton">Edit Details</button>
+            <button type="submit" class="primary large" id="verifyOtpButton">Verify and create account</button>
+            <button type="button" class="ghost" id="backToDetailsButton">Edit details</button>
           </div>
 
           <p id="error" class="error"></p>
