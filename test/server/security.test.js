@@ -72,9 +72,10 @@ function readSessionCookie(response) {
 }
 
 async function resetDatabase() {
-  await run('DELETE FROM sessions');
+  await run('DELETE FROM session');
+  await run('DELETE FROM account');
+  await run('DELETE FROM verification');
   await run('DELETE FROM rate_limits');
-  await run('DELETE FROM pending_registrations');
   await run('DELETE FROM notifications');
   await run('DELETE FROM pickup_options');
   await run('DELETE FROM product_images');
@@ -93,10 +94,19 @@ async function seedUser({
   country = 'Canada'
 } = {}) {
   const result = await run(
-    `INSERT INTO users (username, full_name, email, password, address, phone, country)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO users (username, full_name, email, password, address, phone, country, email_verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
      RETURNING id AS "lastID"`,
     [username, fullName, email, hashPassword(password), address, phone, country]
+  );
+
+  // Mirrors the one-time backfill in server/db/init.js: a user row alone isn't
+  // enough to sign in through Better Auth, which keeps credential passwords on a
+  // separate "account" row.
+  await run(
+    `INSERT INTO account (issuer, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+     VALUES ('local:credential', ?, 'credential', ?, ?, NOW(), NOW())`,
+    [String(result.lastID), result.lastID, hashPassword(password)]
   );
 
   return {
@@ -209,6 +219,26 @@ test('state-changing API requests require the configured origin and sessions use
   assert.equal(meResponse.response.headers.get('cache-control'), 'no-store');
 });
 
+test('logout invalidates the session cookie', async () => {
+  const user = await seedUser({ email: 'logout-target@upei.ca' });
+
+  const loginResponse = await apiRequest('/api/login', {
+    method: 'POST',
+    body: { email: user.email, password: user.password }
+  });
+  const cookie = readSessionCookie(loginResponse.response);
+
+  const meBeforeLogout = await apiRequest('/api/me', { cookie });
+  assert.equal(meBeforeLogout.response.status, 200);
+
+  const logoutResponse = await apiRequest('/api/logout', { method: 'POST', cookie });
+  assert.equal(logoutResponse.response.status, 200);
+  assert.deepEqual(logoutResponse.payload, { success: true });
+
+  const meAfterLogout = await apiRequest('/api/me', { cookie });
+  assert.equal(meAfterLogout.response.status, 401);
+});
+
 test('OTP requests hide account existence and verification codes lock out after repeated failures', async () => {
   const existingUser = await seedUser({ email: 'member@upei.ca' });
   const originalFetch = global.fetch;
@@ -256,93 +286,68 @@ test('OTP requests hide account existence and verification codes lock out after 
     global.fetch = originalFetch;
   }
 
-  await run(
-    `INSERT INTO pending_registrations (
-      email,
-      username,
-      full_name,
-      password_hash,
-      address,
-      phone,
-      country,
-      otp_hash,
-      expires_at,
-      otp_attempts
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      'otp-user@upei.ca',
-      'otpuser',
-      'Otp User',
-      hashPassword('StrongPassword123!'),
-      '789 Campus Road',
-      '+19025550113',
-      'Canada',
-      'not-the-right-hash',
-      new Date(Date.now() + 60_000).toISOString(),
-      0
-    ]
-  );
+  const otpService = require('../../server/services/otpService');
+  const originalSendOtpEmail = otpService.sendOtpEmail;
+  let capturedOtp = null;
+  otpService.sendOtpEmail = async (email, code) => {
+    capturedOtp = code;
+    return { deliveryMode: 'email' };
+  };
 
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const verifyResponse = await apiRequest('/api/register/verify-otp', {
+  try {
+    const requestResponse = await apiRequest('/api/register/request-otp', {
+      method: 'POST',
+      body: {
+        fullName: 'Otp User',
+        username: 'otpuser',
+        email: 'otp-user@upei.ca',
+        phone: '+19025550113',
+        country: 'Canada',
+        address: '789 Campus Road',
+        password: 'StrongPassword123!'
+      }
+    });
+    assert.equal(requestResponse.response.status, 200);
+    assert.ok(capturedOtp);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const verifyResponse = await apiRequest('/api/register/verify-otp', {
+        method: 'POST',
+        body: {
+          email: 'otp-user@upei.ca',
+          otp: '000000'
+        }
+      });
+
+      assert.equal(verifyResponse.response.status, 400);
+      assert.deepEqual(verifyResponse.payload, { message: 'Invalid OTP' });
+    }
+
+    const lockedOutResponse = await apiRequest('/api/register/verify-otp', {
       method: 'POST',
       body: {
         email: 'otp-user@upei.ca',
-        otp: '000000'
+        otp: capturedOtp
       }
     });
 
-    assert.equal(verifyResponse.response.status, 400);
-    assert.deepEqual(verifyResponse.payload, { message: 'Invalid or expired verification code.' });
-  }
+    assert.equal(lockedOutResponse.response.status, 403);
+    assert.deepEqual(lockedOutResponse.payload, { message: 'Too many attempts' });
 
-  const pendingRegistration = await get(
-    'SELECT id FROM pending_registrations WHERE email = ?',
-    ['otp-user@upei.ca']
-  );
-  assert.equal(pendingRegistration, undefined);
-});
-
-test('registration can create an account immediately when OTP is disabled', async () => {
-  const originalOtpSetting = process.env.REGISTRATION_OTP_ENABLED;
-  process.env.REGISTRATION_OTP_ENABLED = 'false';
-
-  try {
-    const registerResponse = await apiRequest('/api/register/request-otp', {
-      method: 'POST',
-      body: {
-        fullName: 'Direct Signup',
-        username: 'directsignup',
-        email: 'directsignup@upei.ca',
-        phone: '+19025550115',
-        country: 'Canada',
-        address: '654 Campus Avenue',
-        password: 'AnotherStrongPass123!'
-      }
-    });
-
-    assert.equal(registerResponse.response.status, 200);
-    assert.deepEqual(registerResponse.payload, {
-      success: true,
-      requiresVerification: false,
-      message: 'Account created.'
-    });
-
-    const cookie = readSessionCookie(registerResponse.response);
-    const meResponse = await apiRequest('/api/me', { cookie });
-    const createdUser = await get('SELECT id FROM users WHERE email = ?', ['directsignup@upei.ca']);
-    const pendingRegistration = await get(
-      'SELECT id FROM pending_registrations WHERE email = ?',
-      ['directsignup@upei.ca']
-    );
-
-    assert.ok(cookie);
-    assert.equal(meResponse.response.status, 200);
-    assert.equal(meResponse.payload.email, 'directsignup@upei.ca');
+    // Unlike the legacy pending_registrations flow, Better Auth creates the user
+    // row up front and gates sign-in on emailVerified, rather than withholding the
+    // row until the OTP is confirmed.
+    const createdUser = await get('SELECT id, email_verified FROM users WHERE email = ?', ['otp-user@upei.ca']);
     assert.ok(createdUser);
-    assert.equal(pendingRegistration, undefined);
+    assert.equal(createdUser.email_verified, false);
+
+    const blockedLogin = await apiRequest('/api/login', {
+      method: 'POST',
+      body: { email: 'otp-user@upei.ca', password: 'StrongPassword123!' }
+    });
+    assert.equal(blockedLogin.response.status, 403);
   } finally {
-    process.env.REGISTRATION_OTP_ENABLED = originalOtpSetting;
+    otpService.sendOtpEmail = originalSendOtpEmail;
   }
 });
 
@@ -457,4 +462,68 @@ test('counterpart profile responses redact private contact fields', async () => 
   assert.equal(profileResponse.payload.user.address, undefined);
   assert.equal(profileResponse.payload.user.country, undefined);
   assert.equal(profileResponse.payload.user.full_name, 'Borrower Example');
+});
+
+test('password reset hides account existence, requires a valid OTP, and lets the new password sign in', async () => {
+  const user = await seedUser({ email: 'reset-target@upei.ca', password: 'OriginalPassword123!' });
+
+  // Mocked up front, before any request is made: the known-email case below
+  // triggers a real send attempt, and this suite shouldn't depend on (or wait
+  // out) a real network call to an email provider to get a deterministic result.
+  const otpService = require('../../server/services/otpService');
+  const originalSendOtpEmail = otpService.sendOtpEmail;
+  let capturedOtp = null;
+  otpService.sendOtpEmail = async (email, code) => {
+    capturedOtp = code;
+    return { deliveryMode: 'email' };
+  };
+
+  try {
+    const unknownEmailResponse = await apiRequest('/api/password/forgot', {
+      method: 'POST',
+      body: { email: 'nobody-here@upei.ca' }
+    });
+    const knownEmailResponse = await apiRequest('/api/password/forgot', {
+      method: 'POST',
+      body: { email: user.email }
+    });
+
+    assert.equal(unknownEmailResponse.response.status, 200);
+    assert.equal(knownEmailResponse.response.status, 200);
+    assert.deepEqual(unknownEmailResponse.payload, knownEmailResponse.payload);
+    assert.ok(capturedOtp);
+
+    const wrongOtpResponse = await apiRequest('/api/password/reset', {
+      method: 'POST',
+      body: { email: user.email, otp: '000000', password: 'BrandNewPassword456!' }
+    });
+    assert.equal(wrongOtpResponse.response.status, 400);
+
+    const stillOldPassword = await apiRequest('/api/login', {
+      method: 'POST',
+      body: { email: user.email, password: user.password }
+    });
+    assert.equal(stillOldPassword.response.status, 200);
+
+    const resetResponse = await apiRequest('/api/password/reset', {
+      method: 'POST',
+      body: { email: user.email, otp: capturedOtp, password: 'BrandNewPassword456!' }
+    });
+    assert.equal(resetResponse.response.status, 200);
+    assert.deepEqual(resetResponse.payload, { success: true });
+
+    const oldPasswordLogin = await apiRequest('/api/login', {
+      method: 'POST',
+      body: { email: user.email, password: user.password }
+    });
+    assert.equal(oldPasswordLogin.response.status, 401);
+
+    const newPasswordLogin = await apiRequest('/api/login', {
+      method: 'POST',
+      body: { email: user.email, password: 'BrandNewPassword456!' }
+    });
+    assert.equal(newPasswordLogin.response.status, 200);
+  } finally {
+    otpService.sendOtpEmail = originalSendOtpEmail;
+  }
 });

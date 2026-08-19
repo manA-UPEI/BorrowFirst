@@ -71,9 +71,10 @@ function readSessionCookie(response) {
 }
 
 async function resetDatabase() {
-  await run('DELETE FROM sessions');
+  await run('DELETE FROM session');
+  await run('DELETE FROM account');
+  await run('DELETE FROM verification');
   await run('DELETE FROM rate_limits');
-  await run('DELETE FROM pending_registrations');
   await run('DELETE FROM notifications');
   await run('DELETE FROM pickup_options');
   await run('DELETE FROM product_images');
@@ -92,10 +93,19 @@ async function seedUser({
   country = 'Canada'
 } = {}) {
   const result = await run(
-    `INSERT INTO users (username, full_name, email, password, address, phone, country)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO users (username, full_name, email, password, address, phone, country, email_verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
      RETURNING id AS "lastID"`,
     [username, fullName, email, hashPassword(password), address, phone, country]
+  );
+
+  // Mirrors the one-time backfill in server/db/init.js: a user row alone isn't
+  // enough to sign in through Better Auth, which keeps credential passwords on a
+  // separate "account" row.
+  await run(
+    `INSERT INTO account (issuer, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+     VALUES ('local:credential', ?, 'credential', ?, ?, NOW(), NOW())`,
+    [String(result.lastID), result.lastID, hashPassword(password)]
   );
 
   return {

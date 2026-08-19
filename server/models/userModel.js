@@ -96,71 +96,6 @@ async function updateProfile(userId, { username, fullName, email, address, phone
   );
 }
 
-async function updatePassword(userId, passwordHash) {
-  await run('UPDATE users SET password = ? WHERE id = ?', [passwordHash, userId]);
-}
-
-async function upsertPendingRegistration({
-  username,
-  fullName,
-  email,
-  passwordHash,
-  address,
-  phone,
-  country,
-  otpHash,
-  expiresAt
-}) {
-  await run(
-    `INSERT INTO pending_registrations (
-      email,
-      username,
-      full_name,
-      password_hash,
-      address,
-      phone,
-      country,
-      otp_hash,
-      expires_at,
-      otp_attempts
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(email) DO UPDATE SET
-      username = excluded.username,
-      full_name = excluded.full_name,
-      password_hash = excluded.password_hash,
-      address = excluded.address,
-      phone = excluded.phone,
-      country = excluded.country,
-      otp_hash = excluded.otp_hash,
-      expires_at = excluded.expires_at,
-      otp_attempts = 0,
-      created_at = NOW()`,
-    [email, username, fullName, passwordHash, address, phone, country, otpHash, expiresAt, 0]
-  );
-}
-
-function findPendingRegistrationByEmail(email) {
-  return get('SELECT * FROM pending_registrations WHERE email = ?', [email]);
-}
-
-async function incrementPendingRegistrationOtpAttempts(email) {
-  await run(
-    'UPDATE pending_registrations SET otp_attempts = COALESCE(otp_attempts, 0) + 1 WHERE email = ?',
-    [email]
-  );
-
-  const row = await get(
-    'SELECT otp_attempts FROM pending_registrations WHERE email = ?',
-    [email]
-  );
-
-  return row ? Number(row.otp_attempts) || 0 : 0;
-}
-
-async function deletePendingRegistration(email) {
-  await run('DELETE FROM pending_registrations WHERE email = ?', [email]);
-}
-
 module.exports = {
   createUser,
   findByEmail,
@@ -169,10 +104,5 @@ module.exports = {
   findRateableUsers,
   findRatingTarget,
   updateRatingStats,
-  updateProfile,
-  updatePassword,
-  upsertPendingRegistration,
-  findPendingRegistrationByEmail,
-  incrementPendingRegistrationOtpAttempts,
-  deletePendingRegistration
+  updateProfile
 };

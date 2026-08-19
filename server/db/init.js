@@ -106,7 +106,7 @@ async function createSchema() {
       lender_id INTEGER NOT NULL,
       borrower_id INTEGER NOT NULL,
       pickup_option INTEGER NOT NULL,
-      pickup_meetup_at TIMESTAMPTZ,
+      pickup_meetup_at TIMESTAMP,
       due_date DATE,
       status TEXT NOT NULL DEFAULT 'pending',
       approved_at TIMESTAMPTZ,
@@ -115,37 +115,12 @@ async function createSchema() {
       pickup_code_expires_at TIMESTAMPTZ,
       picked_up_at TIMESTAMPTZ,
       pickup_verified_by_user_id INTEGER,
-      return_meetup_at TIMESTAMPTZ,
+      return_meetup_at TIMESTAMP,
       return_code_hash TEXT,
       return_code_expires_at TIMESTAMPTZ,
       returned_at TIMESTAMPTZ,
       returned_by_user_id INTEGER,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`
-  );
-
-  await run(
-    `CREATE TABLE IF NOT EXISTS pending_registrations (
-      id SERIAL PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      username TEXT NOT NULL,
-      full_name TEXT NOT NULL,
-      password_hash TEXT NOT NULL,
-      address TEXT NOT NULL DEFAULT '',
-      phone TEXT NOT NULL DEFAULT '',
-      country TEXT NOT NULL DEFAULT '',
-      otp_hash TEXT NOT NULL,
-      expires_at TIMESTAMPTZ NOT NULL,
-      otp_attempts INTEGER NOT NULL DEFAULT 0,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`
-  );
-
-  await run(
-    `CREATE TABLE IF NOT EXISTS sessions (
-      sid TEXT PRIMARY KEY,
-      sess TEXT NOT NULL,
-      expires_at BIGINT NOT NULL
     )`
   );
 
@@ -157,7 +132,133 @@ async function createSchema() {
     )`
   );
 
+  await createBetterAuthSchema();
   await ensureIndexes();
+}
+
+// Hand-written to match the table/column shape Better Auth's Kysely adapter expects
+// at runtime (confirmed against node_modules/@better-auth/core/src/db/get-tables.ts),
+// rather than running Better Auth's own migration CLI: that CLI's schema
+// introspection queries pg_catalog with syntax pg-mem (the in-memory fallback this
+// app uses for tests and DATABASE_URL-less local dev) does not support, and would
+// crash the app on every boot outside of real Postgres. Plain CREATE TABLE IF NOT
+// EXISTS, like the rest of this file, works on both.
+//
+// Better Auth's Kysely queries always double-quote identifiers, which Postgres
+// treats as case-sensitive, so every camelCase column below must stay quoted here
+// too -- an unquoted CamelCase column name would fold to lowercase and no longer
+// match what Better Auth queries for at runtime.
+async function createBetterAuthSchema() {
+  await run(
+    `ALTER TABLE users
+       ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+       ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+  );
+
+  // Better Auth stores credential passwords on its own "account" row, not on the
+  // user row, and never writes users.password when it creates a user. Existing
+  // rows keep their legacy hash (still read by cleanupLegacyDemoData), but the
+  // column can no longer be required for new rows.
+  await run('ALTER TABLE users ALTER COLUMN password DROP NOT NULL');
+
+  // The old express-session store and email/password pending-registration flow
+  // are both fully superseded by Better Auth's own session/account/verification
+  // tables below; drop them so an existing deployment doesn't carry dead tables.
+  await run('DROP TABLE IF EXISTS sessions');
+  await run('DROP TABLE IF EXISTS pending_registrations');
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS session (
+      id SERIAL PRIMARY KEY,
+      "expiresAt" TIMESTAMPTZ NOT NULL,
+      token TEXT NOT NULL,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "ipAddress" TEXT,
+      "userAgent" TEXT,
+      "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    )`
+  );
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS account (
+      id SERIAL PRIMARY KEY,
+      issuer TEXT NOT NULL,
+      "accountId" TEXT NOT NULL,
+      "providerId" TEXT NOT NULL,
+      "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "accessToken" TEXT,
+      "refreshToken" TEXT,
+      "idToken" TEXT,
+      "accessTokenExpiresAt" TIMESTAMPTZ,
+      "refreshTokenExpiresAt" TIMESTAMPTZ,
+      scope TEXT,
+      password TEXT,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`
+  );
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS verification (
+      id SERIAL PRIMARY KEY,
+      identifier TEXT NOT NULL,
+      value TEXT NOT NULL,
+      "expiresAt" TIMESTAMPTZ NOT NULL,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`
+  );
+
+  await run('CREATE UNIQUE INDEX IF NOT EXISTS idx_session_token ON session(token)');
+  await run('CREATE INDEX IF NOT EXISTS idx_session_user_id ON session("userId")');
+  await run(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_account_issuer_account_id ON account(issuer, "accountId")'
+  );
+  await run('CREATE INDEX IF NOT EXISTS idx_account_user_id ON account("userId")');
+  await run('CREATE INDEX IF NOT EXISTS idx_verification_identifier ON verification(identifier)');
+}
+
+// One-time backfill: every user created under the legacy auth flow needs a
+// matching Better Auth "account" row (the credential/password link) so they can
+// keep signing in with their existing password after the migration, without a
+// forced reset. Mirrors exactly what Better Auth's own signUpEmail creates for a
+// new user (see node_modules/better-auth/dist/api/routes/sign-up.mjs), and is
+// safe to run on every boot: existing accounts are left untouched.
+async function backfillBetterAuthAccounts() {
+  const usersMissingAccount = await all(
+    `SELECT u.id, u.password
+     FROM users u
+     LEFT JOIN account a ON a."userId" = u.id AND a."providerId" = 'credential'
+     WHERE a.id IS NULL`
+  );
+
+  for (const user of usersMissingAccount) {
+    await run(
+      `INSERT INTO account (issuer, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+       VALUES ('local:credential', ?, 'credential', ?, ?, NOW(), NOW())`,
+      [String(user.id), user.id, user.password]
+    );
+  }
+
+  await run('UPDATE users SET email_verified = TRUE WHERE email_verified = FALSE');
+}
+
+// One-time, idempotent: pickup_meetup_at/return_meetup_at used to be
+// TIMESTAMPTZ, which meant a naive "10:00" entered by a borrower got assigned
+// an absolute UTC instant using whatever timezone Postgres's session happened
+// to be configured with, then re-interpreted through the *viewer's* browser
+// timezone on display -- two independent, uncoordinated conversions that could
+// silently shift the displayed meetup time away from what was actually agreed.
+// ALTER COLUMN TYPE TIMESTAMP (no USING clause) has Postgres do exactly one
+// best-effort conversion, to the current session's timezone, and then drop the
+// timezone marker for good; new rows are unaffected since the column is
+// already TIMESTAMP from CREATE TABLE. Safe to run on every boot: once the
+// column is TIMESTAMP, this is a no-op.
+async function makeMeetupTimestampsTimezoneNaive() {
+  await run('ALTER TABLE notifications ALTER COLUMN pickup_meetup_at TYPE TIMESTAMP');
+  await run('ALTER TABLE notifications ALTER COLUMN return_meetup_at TYPE TIMESTAMP');
 }
 
 async function ensureSchema() {
@@ -173,14 +274,14 @@ async function ensureSchema() {
 
 async function initializeDatabase() {
   await ensureSchema();
+  await makeMeetupTimestampsTimezoneNaive();
   await migrateLegacyLoanStatuses();
   await normalizeProductImagePaths();
   await sanitizeStoredProductImages();
-  await cleanupPendingRegistrations();
-  await cleanupExpiredSessions();
   await cleanupExpiredRateLimits();
   await cleanupLegacyDemoData();
   await syncUserRatingStats();
+  await backfillBetterAuthAccounts();
 }
 
 async function migrateLegacyLoanStatuses() {
@@ -230,9 +331,6 @@ async function ensureIndexes() {
   );
   await run(
     'CREATE INDEX IF NOT EXISTS idx_ratings_user_created_at ON ratings(user_id, created_at)'
-  );
-  await run(
-    'CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)'
   );
   await run(
     'CREATE INDEX IF NOT EXISTS idx_rate_limits_reset_at ON rate_limits(reset_at)'
@@ -290,7 +388,6 @@ async function deleteDemoUserData(userId) {
   await run('DELETE FROM ratings WHERE user_id = ? OR rater_id = ?', [userId, userId]);
   await run('DELETE FROM products WHERE "Product_Lender_ID" = ?', [userId]);
   await run('DELETE FROM users WHERE id = ?', [userId]);
-  await run('DELETE FROM pending_registrations WHERE email = ?', [DEMO_USER_EMAIL]);
 }
 
 async function cleanupLegacyDemoData() {
@@ -326,14 +423,6 @@ async function syncUserRatingStats() {
       [row.count || 0, row.average || 0, row.user_id]
     );
   }
-}
-
-async function cleanupPendingRegistrations() {
-  await run('DELETE FROM pending_registrations WHERE expires_at < NOW()');
-}
-
-async function cleanupExpiredSessions() {
-  await run('DELETE FROM sessions WHERE expires_at <= ?', [Date.now()]);
 }
 
 async function cleanupExpiredRateLimits() {

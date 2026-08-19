@@ -21,6 +21,7 @@ function createPageRoutes(viewsDir) {
 
   router.get('/login', sendView('login.html'));
   router.get('/register', sendView('register.html'));
+  router.get('/reset-password', sendView('reset-password.html'));
   router.get('/home', sendView('home.html'));
   router.get('/borrowing', sendView('borrowing.html'));
   router.get('/listings', sendView('listings.html'));

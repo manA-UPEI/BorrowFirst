@@ -11,8 +11,13 @@ BorrowFirst is a simple lending app for UPEI users. Students can register, list 
 ## Project Structure
 
 ```text
+src/
+  domain/          Business entities and policies
+  application/     Use cases and dependency ports
+  infrastructure/  Database and external-service adapters
+  interface/       HTTP adapters and response mapping
+
 server/
-  controllers/   Express route handlers
   db/            PostgreSQL connection and setup
   middleware/    Session protection
   models/        Database queries
@@ -24,6 +29,18 @@ public/
   js/            Browser controllers and shared helpers
   views/         HTML pages
 ```
+
+The backend API is organized using Clean Architecture boundaries. Typed domain/application code owns business workflows, typed HTTP adapters own request/response translation, and the existing PostgreSQL, email, image-storage, and session implementations are infrastructure adapters behind application ports. The frontend remains vanilla JavaScript in this phase.
+
+## Development Commands
+
+```bash
+npm run build
+npm test
+npm start
+```
+
+TypeScript output is generated in `dist/` and is not committed.
 
 ## Run Locally
 
