@@ -169,13 +169,6 @@ export function createProductCard(product, {
 
   topLine.appendChild(createElement('h3', { textContent: product.Product_Name || 'Product' }));
 
-  if (ownerView) {
-    topLine.appendChild(createElement('span', {
-      className: 'meta-pill',
-      textContent: 'Your listing'
-    }));
-  }
-
   copy.appendChild(topLine);
   copy.appendChild(createElement('p', {
     className: 'card-description',

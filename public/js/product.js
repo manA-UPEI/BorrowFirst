@@ -1,14 +1,10 @@
+import { mountShell } from './layout.mjs';
 import { getJson } from './api.js';
-import {
-  formatPrice,
-  getCurrentDateTimeLocalValue,
-  getPickupMeetupValidationMessage,
-  getRouteId,
-  getTodayDateValue,
-  logout,
-  redirectTo
-} from './helpers.js';
+import { formatPrice, getCurrentDateTimeLocalValue, getRouteId, getTodayDateValue, redirectTo } from './format.mjs';
+import { getPickupMeetupValidationMessage } from './validate.mjs';
 import { createElement, setImageSource } from './rendering.mjs';
+
+mountShell({ current: 'home' });
 
 const productId = getRouteId();
 const productTitle = document.getElementById('productTitle');
@@ -24,7 +20,6 @@ const pickupWindowHint = document.getElementById('pickupWindowHint');
 const dueDateInput = document.getElementById('dueDate');
 const continueButton = document.getElementById('continueButton');
 const errorElement = document.getElementById('error');
-const logoutButton = document.getElementById('logoutButton');
 const todayDateValue = getTodayDateValue();
 const currentDateTimeValue = getCurrentDateTimeLocalValue();
 const DEFAULT_PRODUCT_IMAGE = '/images/campus-placeholder.svg';
@@ -329,6 +324,4 @@ continueButton.addEventListener('click', () => {
 });
 
 pickupForm.addEventListener('change', updatePickupWindowHint);
-logoutButton.addEventListener('click', logout);
-
 loadProductPage();

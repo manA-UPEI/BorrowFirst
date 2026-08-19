@@ -4,42 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BorrowFirst | Product</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body class="page-product">
-  <header class="app-header">
-    <div class="header-block">
-      <span class="brand-chip">BorrowFirst at UPEI</span>
-      <div class="header-copy">
-        <span class="section-kicker">Request Item</span>
-        <h1 id="productTitle">Product</h1>
-        <p class="subtitle">Review the listing, choose a pickup slot, and set your return plan before you continue.</p>
-      </div>
-    </div>
-    <div class="header-actions">
-      <a class="ghost" href="/home">Home</a>
-      <a class="ghost" href="/requests">Requests</a>
-      <a class="ghost" href="/borrowing">Borrowing</a>
-      <a class="ghost" href="/listings">Listings</a>
-      <a class="ghost" href="/profile">Profile</a>
-      <button class="ghost" id="logoutButton" type="button">Logout</button>
-    </div>
-  </header>
+  <div id="appShell"></div>
 
   <main class="content">
+    <div class="page-head">
+      <div>
+        <h1 id="productTitle">Product</h1>
+        <p class="subtitle">Review the listing, choose a pickup slot, and set your return plan.</p>
+      </div>
+    </div>
+
     <section class="product-detail">
       <div class="product-visual">
         <div class="product-gallery">
           <img id="productImage" class="product-image" alt="Product image" />
           <div id="productImageThumbnails" class="product-thumbnails" aria-label="Product image gallery"></div>
         </div>
-        <div class="visual-tag">
-          <span class="section-kicker">Listing Overview</span>
-          <p class="subtitle">Use the details below to confirm this is the right item before you send a request.</p>
-        </div>
       </div>
       <div class="product-copy">
-        <span class="section-kicker">Borrower Brief</span>
         <h2 id="productName"></h2>
         <p id="productDescription" class="subtitle"></p>
         <div class="detail-grid">
@@ -62,12 +47,11 @@
     <section class="pickup-section">
       <div class="section-header">
         <div>
-          <span class="section-kicker">Scheduling</span>
           <h2>Choose Pickup and Return Timing</h2>
           <p class="subtitle">Select an approved pickup option, lock in your meetup time, and set a due date that fits the handoff.</p>
         </div>
       </div>
-      <div class="booking-grid">
+      <div class="booking-single">
         <div class="booking-form-shell">
           <div class="field">
             <label for="pickupMeetupAt">Pickup Meetup</label>
@@ -83,15 +67,6 @@
           <button class="primary" id="continueButton" type="button">Continue</button>
           <p id="error" class="error"></p>
         </div>
-        <aside class="info-panel">
-          <span class="section-kicker">Before You Send</span>
-          <h3>Keep the request easy to approve.</h3>
-          <ul class="info-list">
-            <li>Choose a meetup time that fits the lender's pickup window exactly.</li>
-            <li>Set a due date on or after the pickup date so the loan timeline stays valid.</li>
-            <li>Once approved, you will receive a pickup code to show at handoff.</li>
-          </ul>
-        </aside>
       </div>
     </section>
   </main>

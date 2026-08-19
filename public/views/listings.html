@@ -4,94 +4,76 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BorrowFirst | Listings</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body class="page-listings">
-  <header class="app-header">
-    <div class="header-block">
-      <span class="brand-chip">BorrowFirst at UPEI</span>
-      <div class="header-copy">
-        <span class="section-kicker">Lending Workspace</span>
-        <h1>Listings</h1>
-        <p class="subtitle">Manage your lending shelf and create new item listings without crowding the home page.</p>
-      </div>
-    </div>
-    <div class="header-actions">
-      <a class="ghost" href="/home">Home</a>
-      <a class="ghost" href="/requests">Requests</a>
-      <a class="ghost" href="/borrowing">Borrowing</a>
-      <a class="ghost is-current" href="/listings">Listings</a>
-      <a class="ghost" href="/profile">Profile</a>
-      <button class="ghost" id="logoutButton" type="button">Logout</button>
-    </div>
-  </header>
+  <div id="appShell"></div>
 
   <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>Listings</h1>
+        <p class="subtitle">Manage your lending shelf and create new item listings.</p>
+      </div>
+      <div class="page-head-actions">
+        <div class="stat-strip">
+          <span class="stat-chip"><strong id="myListingCountLabel">0</strong><span>listed</span></span>
+          <span class="stat-chip"><strong id="onLoanCountLabel">0</strong><span>out on loan</span></span>
+        </div>
+      </div>
+    </div>
+
+    <details class="disclosure" id="lendSection">
+      <summary>
+        <span>
+          <strong>Lend an Item</strong>
+          <span class="subtitle">Add something you want to share with the campus community.</span>
+        </span>
+      </summary>
+      <form id="lendForm" class="lend-form">
+        <div class="form-grid">
+          <div class="field">
+            <label for="productName">Item Name</label>
+            <input id="productName" type="text" placeholder="Desk lamp, calculator, or speaker" maxlength="100" required />
+          </div>
+          <div class="field">
+            <label for="productPrice">Daily Price (CAD)</label>
+            <input id="productPrice" type="number" min="0" step="1" placeholder="10" required />
+          </div>
+          <div class="field">
+            <label for="productCondition">Condition</label>
+            <select id="productCondition">
+              <option value="Excellent">Excellent</option>
+              <option value="Good" selected>Good</option>
+              <option value="Fair">Fair</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="productDescription">Description</label>
+          <textarea id="productDescription" rows="4" maxlength="1000" placeholder="Describe the item, what is included, and any usage notes."></textarea>
+        </div>
+        <div class="field">
+          <label for="productImageFiles">Photos (Optional)</label>
+          <input id="productImageFiles" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple />
+          <p class="helper">Up to 5 PNG, JPEG, WebP, or GIF images, each 5 MiB or smaller.</p>
+          <p id="productImagePreviewStatus" class="helper">No photos selected. The placeholder image will be used.</p>
+          <div id="productImagePreviewList" class="product-image-preview-grid"></div>
+        </div>
+        <button class="primary" type="submit">Add Item</button>
+        <p id="lendMessage" class="error"></p>
+      </form>
+    </details>
+
     <section class="panel section-panel">
       <div class="section-header">
         <div>
-          <span class="section-kicker">Lend</span>
           <h2>Your Lending Shelf</h2>
-          <p class="subtitle">Everything you listed appears here, including items currently reserved or out on loan.</p>
+          <p class="subtitle">Everything you listed, including items currently reserved or out on loan.</p>
         </div>
-        <span class="section-count" id="myListingCountLabel">0 items</span>
       </div>
       <div id="myListingsGrid" class="grid"></div>
       <p id="listingMessage" class="error"></p>
-    </section>
-
-    <section class="lend-section" id="lendSection">
-      <div class="section-header">
-        <div>
-          <span class="section-kicker">New Listing</span>
-          <h2>Lend an Item</h2>
-          <p class="subtitle">Create a polished listing for something you want to share with the campus community.</p>
-        </div>
-      </div>
-      <div class="split-panel">
-        <form id="lendForm" class="lend-form">
-          <div class="form-grid">
-            <div class="field">
-              <label for="productName">Item Name</label>
-              <input id="productName" type="text" placeholder="Desk lamp, calculator, or speaker" maxlength="100" required />
-            </div>
-            <div class="field">
-              <label for="productPrice">Daily Price (CAD)</label>
-              <input id="productPrice" type="number" min="0" step="1" placeholder="10" required />
-            </div>
-            <div class="field">
-              <label for="productCondition">Condition</label>
-              <select id="productCondition">
-                <option value="Excellent">Excellent</option>
-                <option value="Good" selected>Good</option>
-                <option value="Fair">Fair</option>
-              </select>
-            </div>
-          </div>
-          <div class="field">
-            <label for="productDescription">Description</label>
-            <textarea id="productDescription" rows="4" maxlength="1000" placeholder="Describe the item, what is included, and any usage notes."></textarea>
-          </div>
-          <div class="field">
-            <label for="productImageFiles">Photos (Optional)</label>
-            <input id="productImageFiles" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple />
-            <p class="helper">Upload up to 5 PNG, JPEG, WebP, or GIF images. Each image must be 5 MiB or smaller.</p>
-            <p id="productImagePreviewStatus" class="helper">No photos selected. The placeholder image will be used.</p>
-            <div id="productImagePreviewList" class="product-image-preview-grid"></div>
-          </div>
-          <button class="primary" type="submit">Add Item</button>
-          <p id="lendMessage" class="error"></p>
-        </form>
-        <aside class="info-panel">
-          <span class="section-kicker">Listing Tips</span>
-          <h3>Make the listing easy to trust at a glance.</h3>
-          <ul class="info-list">
-            <li>Use a clear item name that students would naturally search for.</li>
-            <li>Add a photo when possible so borrowers can identify the exact item quickly.</li>
-            <li>Describe wear, included accessories, and any limits before requests start arriving.</li>
-          </ul>
-        </aside>
-      </div>
     </section>
   </main>
 

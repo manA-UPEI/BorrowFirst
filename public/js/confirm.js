@@ -1,17 +1,10 @@
+import { mountShell } from './layout.mjs';
 import { getJson, postJson } from './api.js';
-import {
-  formatDateLabel,
-  formatDateTimeInputValue,
-  getCurrentDateTimeLocalValue,
-  getPickupMeetupValidationMessage,
-  formatPrice,
-  getQueryParam,
-  getRouteId,
-  getTodayDateValue,
-  logout,
-  redirectTo
-} from './helpers.js';
+import { formatDateLabel, formatDateTimeInputValue, formatPrice, getCurrentDateTimeLocalValue, getQueryParam, getRouteId, getTodayDateValue, redirectTo } from './format.mjs';
+import { getPickupMeetupValidationMessage } from './validate.mjs';
 import { renderSummary } from './rendering.mjs';
+
+mountShell({ current: 'home' });
 
 const productId = getRouteId();
 const slot = getQueryParam('slot');
@@ -22,7 +15,6 @@ const pickupMeetupInput = document.getElementById('pickupMeetupAt');
 const pickupWindowHint = document.getElementById('pickupWindowHint');
 const confirmMessage = document.getElementById('confirmMessage');
 const okButton = document.getElementById('okButton');
-const logoutButton = document.getElementById('logoutButton');
 
 let canSendRequest = false;
 let selectedPickupOption = null;
@@ -192,7 +184,5 @@ okButton.addEventListener('click', async () => {
     confirmMessage.textContent = error.message || 'Unable to send request.';
   }
 });
-
-logoutButton.addEventListener('click', logout);
 
 loadSummary();

@@ -4,52 +4,32 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BorrowFirst | Payment</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body class="page-payment">
-  <header class="app-header">
-    <div class="header-block">
-      <span class="brand-chip">BorrowFirst at UPEI</span>
-      <div class="header-copy">
-        <span class="section-kicker">Payment Preview</span>
-        <h1>Payment Gateway Coming Soon</h1>
-        <p class="subtitle">This screen previews the reservation details that future payment support will use.</p>
-      </div>
-    </div>
-    <div class="header-actions">
-      <a class="ghost" href="/home">Home</a>
-      <a class="ghost" href="/requests">Requests</a>
-      <a class="ghost" href="/borrowing">Borrowing</a>
-      <a class="ghost" href="/listings">Listings</a>
-      <a class="ghost" href="/profile">Profile</a>
-      <button class="ghost" id="logoutButton" type="button">Logout</button>
-    </div>
-  </header>
+  <div id="appShell"></div>
 
   <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>Payment</h1>
+        <p class="subtitle">Reservation details that future payment support will use.</p>
+      </div>
+    </div>
+
     <section class="confirm-card">
       <div class="section-header">
         <div>
-          <span class="section-kicker">Checkout Placeholder</span>
           <h2>Reservation Summary</h2>
           <p class="subtitle">The layout is ready for future gateway wiring. For now, it shows the rental context that would be billed.</p>
         </div>
       </div>
-      <div class="confirm-grid">
+      <div class="confirm-single">
         <div class="summary-panel">
           <div id="paymentSummary" class="summary"></div>
         </div>
-        <aside class="info-panel">
-          <span class="section-kicker">Next Phase</span>
-          <h3>Payments can slot in without redesigning the flow.</h3>
-          <ul class="info-list">
-            <li>Item, pickup slot, and pricing context are already assembled here.</li>
-            <li>A future gateway can use this panel for checkout confirmation and receipt display.</li>
-            <li>Until then, this stays a product-quality preview instead of a blank stub.</li>
-          </ul>
-          <button class="primary" id="backHome" type="button">Back to Home</button>
-        </aside>
       </div>
+      <button class="primary" id="backHome" type="button">Back to Home</button>
     </section>
   </main>
 

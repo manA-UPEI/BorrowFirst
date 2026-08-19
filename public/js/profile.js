@@ -1,25 +1,16 @@
+import { mountShell } from './layout.mjs';
 import { getJson, postJson } from './api.js';
-import {
-  appendStatusDetails,
-  createProfileLinkButton,
-  formatDateLabel,
-  formatDateTimeLabel,
-  formatPrice,
-  getAddressValidationMessage,
-  getCountryValidationMessage,
-  getPhoneValidationMessage,
-  getQueryParam,
-  getUserProfilePath,
-  isValidUpeiEmail,
-  logout,
-  renderRatings
-} from './helpers.js';
+import { appendStatusDetails, createProfileLinkButton, renderRatings } from './cards.mjs';
+import { formatDateLabel, formatDateTimeLabel, formatPrice, getQueryParam, getUserProfilePath } from './format.mjs';
+import { getAddressValidationMessage, getCountryValidationMessage, getPhoneValidationMessage, isValidUpeiEmail } from './validate.mjs';
 import {
   appendLabeledParagraph,
   appendPlainParagraph,
   createElement,
   createStatusBadge
 } from './rendering.mjs';
+
+mountShell({ current: 'home' });
 
 const profilePageTitle = document.getElementById('profilePageTitle');
 const profilePageSubtitle = document.getElementById('profilePageSubtitle');
@@ -42,7 +33,6 @@ const profileMessage = document.getElementById('profileMessage');
 const profileEditSection = document.getElementById('profileEditSection');
 const profileHistorySection = document.getElementById('profileHistorySection');
 const historyList = document.getElementById('historyList');
-const logoutButton = document.getElementById('logoutButton');
 const viewedUserParam = getQueryParam('user');
 const viewedUserId = Number(viewedUserParam);
 const viewedInteractionParam = getQueryParam('interaction');
@@ -241,7 +231,6 @@ async function loadCounterpartProfile() {
   }
 }
 
-logoutButton.addEventListener('click', logout);
 profileForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   profileMessage.textContent = '';

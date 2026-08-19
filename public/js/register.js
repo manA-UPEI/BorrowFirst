@@ -1,11 +1,11 @@
 import { getJson, postJson } from './api.js';
+import { redirectTo } from './format.mjs';
 import {
   getAddressValidationMessage,
   getCountryValidationMessage,
   getPhoneValidationMessage,
-  isValidUpeiEmail,
-  redirectTo
-} from './helpers.js';
+  isValidUpeiEmail
+} from './validate.mjs';
 
 const form = document.getElementById('registerForm');
 const authSteps = document.querySelector('.auth-steps');

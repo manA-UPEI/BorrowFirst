@@ -1,12 +1,14 @@
+import { mountShell } from './layout.mjs';
 import { getJson } from './api.js';
-import { formatPrice, getQueryParam, logout, redirectTo } from './helpers.js';
+import { formatPrice, getQueryParam, redirectTo } from './format.mjs';
 import { renderSummary } from './rendering.mjs';
+
+mountShell({ current: 'home' });
 
 const productId = getQueryParam('productId');
 const slot = getQueryParam('slot');
 const paymentSummary = document.getElementById('paymentSummary');
 const backHomeButton = document.getElementById('backHome');
-const logoutButton = document.getElementById('logoutButton');
 
 async function loadPaymentSummary() {
   try {
@@ -34,7 +36,5 @@ async function loadPaymentSummary() {
 backHomeButton.addEventListener('click', () => {
   redirectTo('/home');
 });
-
-logoutButton.addEventListener('click', logout);
 
 loadPaymentSummary();

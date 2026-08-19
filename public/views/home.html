@@ -4,86 +4,47 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BorrowFirst | Home</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body class="page-home">
-  <header class="app-header">
-    <div class="header-block">
-      <span class="brand-chip">BorrowFirst at UPEI</span>
-      <div class="header-copy">
-        <span class="section-kicker">Browse Dashboard</span>
-        <h1>BorrowFirst</h1>
-        <p class="subtitle">Browse what is available right now and jump straight to the part of the workflow you need.</p>
-      </div>
-    </div>
-    <div class="header-actions">
-      <a class="ghost is-current" href="/home">Home</a>
-      <a class="ghost" href="/requests">Requests</a>
-      <a class="ghost" href="/borrowing">Borrowing</a>
-      <a class="ghost" href="/listings">Listings</a>
-      <a class="ghost" href="/profile">Profile</a>
-      <button class="ghost" id="logoutButton" type="button">Logout</button>
-    </div>
-  </header>
+  <div id="appShell"></div>
 
-  <main class="content dashboard-content">
-    <section class="hero-panel hero-panel-compact">
-      <div class="hero-copy">
-        <span class="section-kicker">Campus Lending</span>
-        <h2>Find what you need fast.</h2>
-        <p class="subtitle">Home now stays focused on discovery. Requests, borrowing activity, listings, and profile management all live on their own dedicated pages.</p>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>Home</h1>
+        <p class="subtitle">Browse what is available to borrow right now across campus.</p>
       </div>
-      <div class="hero-side">
-        <div class="hero-stats">
-          <div class="hero-stat">
-            <span id="availableCount">0</span>
-            <p>Available now</p>
-          </div>
-          <div class="hero-stat">
-            <span id="myListingCount">0</span>
-            <p>Your listings</p>
-          </div>
-          <div class="hero-stat">
-            <span id="pendingCount">0</span>
-            <p>Pending requests</p>
-          </div>
-        </div>
-        <div class="quick-link-grid">
-          <a class="quick-link-card" href="/requests">
-            <strong>Requests</strong>
-            <p>Approve pickups and confirm returns.</p>
-          </a>
-          <a class="quick-link-card" href="/borrowing">
-            <strong>Borrowing</strong>
-            <p>Track transactions, alerts, and ratings.</p>
-          </a>
-          <a class="quick-link-card" href="/listings">
-            <strong>Listings</strong>
-            <p>Manage your lending shelf and add items.</p>
-          </a>
-          <a class="quick-link-card" href="/profile">
-            <strong>Profile</strong>
-            <p>Update details and review your history.</p>
-          </a>
+      <div class="page-head-actions">
+        <div class="stat-strip">
+          <span class="stat-chip"><strong id="availableCount">0</strong><span>available</span></span>
+          <span class="stat-chip"><strong id="myListingCount">0</strong><span>your listings</span></span>
+          <span class="stat-chip"><strong id="pendingCount">0</strong><span>pending</span></span>
         </div>
       </div>
-    </section>
+    </div>
 
     <section class="panel section-panel">
       <div class="section-header">
         <div>
-          <span class="section-kicker">Borrow</span>
           <h2>Available Products</h2>
-          <p class="subtitle">Only items currently available to borrow appear here.</p>
+          <p class="subtitle">Reserved and borrowed items are hidden from this catalog.</p>
         </div>
         <div class="field search-field">
           <label for="searchInput">Search</label>
-          <input id="searchInput" type="text" placeholder="Search by item name, condition, or description" />
+          <input id="searchInput" type="text" placeholder="Search by name, condition, or description" />
         </div>
       </div>
-      <div class="section-subheader">
+
+      <div class="filter-bar">
+        <div class="chip-row" id="productFilters">
+          <button class="chip is-active" type="button" data-filter="all" aria-pressed="true">All</button>
+          <button class="chip" type="button" data-filter="budget" aria-pressed="false">Under $10/day</button>
+          <button class="chip" type="button" data-filter="excellent" aria-pressed="false">Excellent condition</button>
+        </div>
         <span class="section-count" id="availableCountLabel">0 items</span>
       </div>
+
       <div id="productGrid" class="grid"></div>
       <p id="productMessage" class="error"></p>
     </section>
