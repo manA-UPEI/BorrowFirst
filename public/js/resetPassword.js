@@ -1,5 +1,6 @@
 import { postJson } from './api.js';
-import { isValidUpeiEmail, redirectTo } from './helpers.js';
+import { redirectTo } from './format.mjs';
+import { isValidUpeiEmail } from './validate.mjs';
 
 const form = document.getElementById('resetPasswordForm');
 const requestStep = document.getElementById('requestStep');

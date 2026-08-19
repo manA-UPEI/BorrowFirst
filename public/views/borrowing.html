@@ -4,84 +4,49 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BorrowFirst | Borrowing</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body class="page-borrowing">
-  <header class="app-header">
-    <div class="header-block">
-      <span class="brand-chip">BorrowFirst at UPEI</span>
-      <div class="header-copy">
-        <span class="section-kicker">Borrower Workspace</span>
-        <h1>Borrowing</h1>
-        <p class="subtitle">Track your requests, watch loan reminders, and manage return steps from one place.</p>
-      </div>
-    </div>
-    <div class="header-actions">
-      <a class="ghost" href="/home">Home</a>
-      <a class="ghost" href="/requests">Requests</a>
-      <a class="ghost is-current" href="/borrowing">Borrowing</a>
-      <a class="ghost" href="/listings">Listings</a>
-      <a class="ghost" href="/profile">Profile</a>
-      <button class="ghost" id="logoutButton" type="button">Logout</button>
-    </div>
-  </header>
+  <div id="appShell"></div>
 
   <main class="content">
-    <section class="panel page-intro-card">
-      <div class="section-header">
-        <div>
-          <span class="section-kicker">Borrower Flow</span>
-          <h2>Everything after you request an item lives here.</h2>
-          <p class="subtitle">Use this page to monitor your reservations, active loans, due dates, return meetings, and reputation actions.</p>
-        </div>
+    <div class="page-head">
+      <div>
+        <h1>Borrowing</h1>
+        <p class="subtitle">Track your requests, loan reminders, and return steps.</p>
       </div>
-      <div class="milestone-row">
-        <article class="milestone-card">
-          <span>01</span>
-          <strong>Reserve</strong>
-          <p>Track newly approved requests and pickup verification codes.</p>
-        </article>
-        <article class="milestone-card">
-          <span>02</span>
-          <strong>Borrow</strong>
-          <p>Manage return meetups and generate return codes when ready.</p>
-        </article>
-        <article class="milestone-card">
-          <span>03</span>
-          <strong>Rate</strong>
-          <p>Rate completed lending relationships from the same workspace.</p>
-        </article>
+      <div class="page-head-actions">
+        <div class="stat-strip" id="borrowStats"></div>
       </div>
-    </section>
-
-    <section class="panel section-panel" id="transactionsSection">
-      <div class="section-header">
-        <div>
-          <span class="section-kicker">Transactions</span>
-          <h2>My Transactions</h2>
-          <p class="subtitle">Requests, pickup codes, active loans, and return actions appear here.</p>
-        </div>
-      </div>
-      <div id="transactionList" class="stack"></div>
-      <p id="transactionMessage" class="error"></p>
-    </section>
+    </div>
 
     <section class="panel section-panel" id="loanAlertsSection">
       <div class="section-header">
         <div>
-          <span class="section-kicker">Alerts</span>
           <h2>Loan Alerts</h2>
-          <p class="subtitle">Due dates, overdue items, and return-confirmation reminders appear here.</p>
+          <p class="subtitle">Due dates, overdue items, and return-confirmation reminders.</p>
         </div>
+        <span class="section-count" id="alertCount">0</span>
       </div>
       <div id="loanAlertList" class="stack"></div>
       <p id="loanAlertMessage" class="error"></p>
     </section>
 
+    <section class="panel section-panel" id="transactionsSection">
+      <div class="section-header">
+        <div>
+          <h2>My Transactions</h2>
+          <p class="subtitle">Requests, pickup codes, active loans, and return actions.</p>
+        </div>
+        <span class="section-count" id="transactionCount">0</span>
+      </div>
+      <div id="transactionList" class="stack"></div>
+      <p id="transactionMessage" class="error"></p>
+    </section>
+
     <section class="panel section-panel">
       <div class="section-header">
         <div>
-          <span class="section-kicker">Reputation</span>
           <h2>Rate a User</h2>
           <p class="subtitle">You can only rate users you have successfully borrowed from or lent to.</p>
         </div>

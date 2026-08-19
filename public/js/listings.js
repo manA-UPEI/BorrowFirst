@@ -1,10 +1,7 @@
 import { getJson, postForm } from './api.js';
-import {
-  getOwnedProducts,
-  removeListing,
-  renderCardGrid
-} from './dashboardShared.js';
-import { logout } from './helpers.js';
+import { getOwnedProducts, removeListing, renderCardGrid } from './catalog.mjs';
+import { mountShell } from './layout.mjs';
+import { renderSkeletons, showToast } from './ui.mjs';
 import {
   MAX_PRODUCT_IMAGE_COUNT,
   createProductImagePreviewCard,
@@ -12,9 +9,12 @@ import {
   validateSelectedProductImages
 } from './productImageForm.mjs';
 
-const logoutButton = document.getElementById('logoutButton');
+mountShell({ current: 'listings' });
+
 const myListingsGrid = document.getElementById('myListingsGrid');
 const myListingCountLabel = document.getElementById('myListingCountLabel');
+const onLoanCountLabel = document.getElementById('onLoanCountLabel');
+const lendSection = document.getElementById('lendSection');
 const listingMessage = document.getElementById('listingMessage');
 const lendForm = document.getElementById('lendForm');
 const lendMessage = document.getElementById('lendMessage');
@@ -99,7 +99,10 @@ function renderListings() {
     { ownerView: true, onRemove: handleRemoveListing }
   );
 
-  myListingCountLabel.textContent = `${ownedProducts.length} item${ownedProducts.length === 1 ? '' : 's'}`;
+  myListingCountLabel.textContent = String(ownedProducts.length);
+  onLoanCountLabel.textContent = String(
+    ownedProducts.filter((product) => product.Product_Borrower_ID).length
+  );
 }
 
 async function loadProfile() {
@@ -129,9 +132,9 @@ async function handleRemoveListing(product) {
     }
 
     await loadProducts();
-    listingMessage.textContent = 'Listing removed from your active shelf.';
+    showToast('Listing removed from your active shelf.');
   } catch (error) {
-    listingMessage.textContent = error.message || 'Unable to remove listing.';
+    showToast(error.message || 'Unable to remove listing.', 'error');
   }
 }
 
@@ -177,17 +180,18 @@ async function handleLendSubmit(event) {
 
     lendForm.reset();
     resetSelectedImages();
-    lendMessage.textContent = 'Item listed. It now appears in your lending shelf.';
+    lendSection.open = false;
+    showToast('Item listed. It now appears in your lending shelf.');
     await loadProducts();
   } catch (error) {
     lendMessage.textContent = error.message || 'Unable to add item.';
   }
 }
 
-logoutButton.addEventListener('click', logout);
 lendForm.addEventListener('submit', handleLendSubmit);
 productImageFilesInput.addEventListener('change', handleSelectedImages);
 renderSelectedImagePreviews();
+renderSkeletons(myListingsGrid, 3, 'card');
 
 try {
   await loadProfile();

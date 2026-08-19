@@ -4,10 +4,12 @@ import {
   getCatalogProducts,
   getOwnedProducts,
   renderCardGrid
-} from './dashboardShared.js';
-import { logout } from './helpers.js';
+} from './catalog.mjs';
+import { mountShell } from './layout.mjs';
+import { bindFilterChips, renderSkeletons } from './ui.mjs';
 
-const logoutButton = document.getElementById('logoutButton');
+mountShell({ current: 'home' });
+
 const searchInput = document.getElementById('searchInput');
 const productGrid = document.getElementById('productGrid');
 const productMessage = document.getElementById('productMessage');
@@ -20,37 +22,36 @@ let currentUserId = null;
 let products = [];
 let notifications = [];
 
-function updateHomeMetrics() {
-  const ownedProducts = getOwnedProducts(products, currentUserId);
-  const visibleCatalogProducts = getCatalogProducts(products, currentUserId, searchInput.value);
-  const pendingNotifications = notifications.filter((notification) => notification.status === 'pending');
+const getFilter = bindFilterChips(document.getElementById('productFilters'), renderProducts);
 
-  availableCount.textContent = String(visibleCatalogProducts.length);
-  myListingCount.textContent = String(ownedProducts.length);
-  pendingCount.textContent = String(pendingNotifications.length);
-  availableCountLabel.textContent = `${visibleCatalogProducts.length} item${visibleCatalogProducts.length === 1 ? '' : 's'}`;
+function getVisibleProducts() {
+  return getCatalogProducts(products, currentUserId, searchInput.value, getFilter());
 }
 
 function renderProducts() {
-  const catalogProducts = getCatalogProducts(products, currentUserId, searchInput.value);
+  const visible = getVisibleProducts();
+  const isFiltered = Boolean(searchInput.value.trim()) || getFilter() !== 'all';
 
   renderCardGrid(
     productGrid,
-    catalogProducts,
+    visible,
     'No available products',
-    searchInput.value.trim()
-      ? 'Try a different search term. Reserved and borrowed items are hidden from this catalog.'
+    isFiltered
+      ? 'Try a different search term or filter. Reserved and borrowed items stay hidden.'
       : 'Reserved and borrowed items are hidden here. Check back after more listings are added.'
   );
 
-  updateHomeMetrics();
+  availableCount.textContent = String(visible.length);
+  myListingCount.textContent = String(getOwnedProducts(products, currentUserId).length);
+  pendingCount.textContent = String(
+    notifications.filter((notification) => notification.status === 'pending').length
+  );
+  availableCountLabel.textContent = `${visible.length} item${visible.length === 1 ? '' : 's'}`;
 }
 
 async function loadProfile() {
   try {
-    const me = await getJson('/api/me');
-    currentUserId = me.id;
-    updateHomeMetrics();
+    currentUserId = (await getJson('/api/me')).id;
   } catch (error) {
     currentUserId = null;
   }
@@ -77,12 +78,12 @@ async function loadNotificationCounts() {
     notifications = [];
   }
 
-  updateHomeMetrics();
+  renderProducts();
 }
 
-logoutButton.addEventListener('click', logout);
 searchInput.addEventListener('input', renderProducts);
 
+renderSkeletons(productGrid, 4, 'card');
 await loadProfile();
 await Promise.all([loadProducts(), loadNotificationCounts()]);
 window.setInterval(loadNotificationCounts, 10000);
