@@ -1,10 +1,12 @@
 function requireSession() {
-  const publicPages = new Set(['/', '/login', '/register']);
+  const publicPages = new Set(['/', '/login', '/register', '/reset-password']);
   const publicApiRoutes = new Set([
     '/api/login',
     '/api/register/config',
     '/api/register/request-otp',
-    '/api/register/verify-otp'
+    '/api/register/verify-otp',
+    '/api/password/forgot',
+    '/api/password/reset'
   ]);
 
   return (req, res, next) => {

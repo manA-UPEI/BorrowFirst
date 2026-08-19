@@ -3,16 +3,11 @@ const nodemailer = require('nodemailer');
 
 const OTP_TTL_MINUTES = 10;
 
-function generateOtpCode() {
-  return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-}
-
+// Still used by transactionCodeService.js and the notification pickup/return
+// code flow -- unrelated to registration, which now hashes its own OTPs via
+// Better Auth's storeOTP: "hashed" config.
 function hashOtp(code) {
   return crypto.createHash('sha256').update(code).digest('hex');
-}
-
-function getOtpExpiry() {
-  return new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000).toISOString();
 }
 
 function hasSmtpConfig() {
@@ -77,6 +72,18 @@ async function sendOtpEmail(email, code) {
     };
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    // No email provider configured locally -- validateEnvironment() already
+    // requires one whenever OTP is enabled in production, so this only ever
+    // runs in local dev, where printing the code is what lets the OTP flow be
+    // exercised (by a developer or by clicking through it) without setting up
+    // real email credentials first.
+    console.log(`[dev] BorrowFirst verification code for ${email}: ${code}`);
+    return {
+      deliveryMode: 'console'
+    };
+  }
+
   throw new Error(
     'OTP email delivery is not configured. Set RESEND_API_KEY or SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and OTP_FROM_EMAIL.'
   );
@@ -84,8 +91,6 @@ async function sendOtpEmail(email, code) {
 
 module.exports = {
   OTP_TTL_MINUTES,
-  generateOtpCode,
   hashOtp,
-  getOtpExpiry,
   sendOtpEmail
 };

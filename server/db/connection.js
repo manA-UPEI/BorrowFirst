@@ -5,7 +5,16 @@ const { Pool, types } = require('pg');
 types.setTypeParser(types.builtins.INT8, (value) => Number(value));
 types.setTypeParser(types.builtins.NUMERIC, (value) => Number(value));
 types.setTypeParser(types.builtins.DATE, (value) => value);
-types.setTypeParser(types.builtins.TIMESTAMP, (value) => `${value.replace(' ', 'T')}Z`);
+// Deliberately timezone-naive: pickup_meetup_at/return_meetup_at are wall-clock
+// times for a physical, single-campus meetup, not absolute instants. Appending
+// 'Z' here would relabel a naive value as UTC, and every display path (see
+// helpers.js formatDateTimeLabel/formatDateTimeInputValue) runs values through
+// `new Date(...)`, which converts a real UTC instant to the *viewer's* local
+// time -- turning "we agreed to meet at 10:00" into a different displayed hour
+// for anyone whose browser isn't in the same offset the server happened to
+// write it in. Leaving the string bare keeps it inert: `new Date()` treats an
+// offset-less string as already-local, so it displays back unchanged everywhere.
+types.setTypeParser(types.builtins.TIMESTAMP, (value) => value.replace(' ', 'T'));
 types.setTypeParser(types.builtins.TIMESTAMPTZ, (value) => new Date(value).toISOString());
 
 const transactionStorage = new AsyncLocalStorage();

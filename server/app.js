@@ -1,18 +1,20 @@
 const express = require('express');
 const path = require('path');
-const session = require('express-session');
+const { toNodeHandler } = require('better-auth/node');
 
 const initializeDatabase = require('./db/init');
 const securityHeaders = require('./middleware/securityHeaders');
 const requireSameOrigin = require('./middleware/requireSameOrigin');
 const requireSession = require('./middleware/requireSession');
 const noStore = require('./middleware/noStore');
+const betterAuthSession = require('./middleware/betterAuthSession');
 const createApiRoutes = require('./routes/api');
 const createPageRoutes = require('./routes/pages');
-const PostgresSessionStore = require('./services/postgresSessionStore');
 
 async function createApp() {
   await initializeDatabase();
+
+  const { auth } = await import('../dist/src/infrastructure/auth/betterAuth.mjs');
 
   const app = express();
   const publicDir = path.join(__dirname, '..', 'public');
@@ -38,30 +40,18 @@ async function createApp() {
     app.set('trust proxy', trustProxy);
   }
 
-  app.use(express.json({ limit: '2mb' }));
   app.use(securityHeaders({ isProduction }));
   app.use(requireSameOrigin());
   app.get('/healthz', (req, res) => {
     res.json({ ok: true, uptime: Math.round(process.uptime()) });
   });
-  app.use(
-    session({
-      name: process.env.SESSION_NAME || 'borrowfirst.sid',
-      secret: process.env.SESSION_SECRET,
-      store: new PostgresSessionStore(),
-      resave: false,
-      saveUninitialized: false,
-      rolling: true,
-      unset: 'destroy',
-      cookie: {
-        httpOnly: true,
-        sameSite: 'strict',
-        secure: isProduction,
-        path: '/',
-        maxAge: 1000 * 60 * 60 * 8
-      }
-    })
-  );
+
+  // Better Auth's handler must see the raw request body itself, so it is mounted
+  // ahead of express.json() (calling express.json() first hangs its handler).
+  app.all('/api/auth/*', toNodeHandler(auth));
+
+  app.use(express.json({ limit: '2mb' }));
+  app.use(betterAuthSession(auth));
   app.use(noStore());
 
   const staticOptions = {
