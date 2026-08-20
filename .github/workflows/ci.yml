@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run build
+
+      # The suite runs against pg-mem, so no Postgres service is needed here.
+      # SESSION_SECRET/APP_ORIGIN are what server.js validateEnvironment requires.
+      - name: Test
+        run: node --test
+        env:
+          NODE_ENV: test
+          SESSION_SECRET: ci-session-secret-0123456789
+          APP_ORIGIN: http://127.0.0.1
+
+      # Dev-only advisories are excluded: they do not ship in the deployed image.
+      #
+      # Reporting, not gating, for now: the tree currently carries known advisories
+      # in nodemailer, multer, and qs (via express), and clearing them needs a
+      # nodemailer major bump that touches OTP delivery. Flip this to a hard gate
+      # once that upgrade lands, so new advisories start failing the build.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+        continue-on-error: true

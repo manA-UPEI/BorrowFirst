@@ -18,7 +18,8 @@ src/
   interface/       HTTP adapters and response mapping
 
 server/
-  db/            PostgreSQL connection and setup
+  db/            PostgreSQL connection, migration runner, and pagination helpers
+  db/migrations/ Numbered SQL migrations, applied in order at startup
   middleware/    Session protection
   models/        Database queries
   routes/        API routes and page routes
@@ -32,6 +33,29 @@ public/
 
 The backend API is organized using Clean Architecture boundaries. Typed domain/application code owns business workflows, typed HTTP adapters own request/response translation, and the existing PostgreSQL, email, image-storage, and session implementations are infrastructure adapters behind application ports. The frontend remains vanilla JavaScript in this phase.
 
+## Database Migrations
+
+Schema changes live in `server/db/migrations` as numbered `.sql` files. The runner
+(`server/db/migrate.js`) applies any file not yet recorded in the `schema_migrations`
+table, one transaction per file, on every startup. Migrations are never edited once
+they have shipped -- add a new file instead.
+
+To add one, create the next numbered file:
+
+```bash
+touch server/db/migrations/006_add_categories.sql
+```
+
+Two constraints on what you can write in them:
+
+- The suite and DATABASE_URL-less local development run on `pg-mem`, which implements
+  a subset of Postgres. `REPLACE`, correlated subqueries referencing the outer table,
+  and `INSERT ... SELECT` with a correlated `NOT EXISTS` are not supported; standard
+  `SUBSTRING`, `UPDATE ... FROM`, `DISTINCT ON`, `ILIKE`, and `LEFT JOIN` are.
+- Better Auth's Kysely queries always double-quote identifiers, so its camelCase
+  columns must stay quoted in SQL that touches the `session`, `account`, or
+  `verification` tables.
+
 ## Development Commands
 
 ```bash
@@ -40,7 +64,12 @@ npm test
 npm start
 ```
 
-TypeScript output is generated in `dist/` and is not committed.
+`npm test` runs ESLint, then `tsc`, then the Node test runner. TypeScript output is
+generated in `dist/` and is not committed.
+
+```bash
+npm run lint
+```
 
 ## Run Locally
 

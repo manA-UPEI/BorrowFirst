@@ -1,5 +1,8 @@
 const { run, get, all } = require('../db/connection');
+const { encodeCursor, decodeCursor, normalizeLimit } = require('../db/pagination');
 const { resolveProductImageUrl, DEFAULT_PRODUCT_IMAGE } = require('../services/imageService');
+
+const PRODUCT_SORTS = ['newest', 'price_asc', 'price_desc'];
 
 const DEFAULT_PICKUP_OPTIONS = [
   ['Main Library Lobby', '09:00 AM', '11:00 AM'],
@@ -20,34 +23,228 @@ const PRODUCT_SELECT_FIELDS_SQL = `
   0::INTEGER AS image_count
 `;
 
+// Ranks the candidate loans for one product the way getCurrentTransactionStatus
+// used to in SQL: an in-progress loan outranks a reservation, then most recently
+// advanced, then most recently created.
+function compareTransactionRows(left, right) {
+  const leftRank = left.status === 'active' ? 0 : 1;
+  const rightRank = right.status === 'active' ? 0 : 1;
+
+  if (leftRank !== rightRank) {
+    return leftRank - rightRank;
+  }
+
+  const leftTime = left.picked_up_at || left.approved_at || left.created_at || '';
+  const rightTime = right.picked_up_at || right.approved_at || right.created_at || '';
+
+  if (leftTime !== rightTime) {
+    return leftTime < rightTime ? 1 : -1;
+  }
+
+  return Number(right.id) - Number(left.id);
+}
+
+// Loads every relation a product row needs for display in a fixed number of
+// queries, rather than three queries per row. Nothing here depends on the page
+// size, so listing 100 products costs the same four round trips as listing one.
+async function loadProductRelations(productIds) {
+  if (!productIds.length) {
+    return {
+      coverImages: new Map(),
+      imageCounts: new Map(),
+      transactionsByProduct: new Map()
+    };
+  }
+
+  const placeholders = productIds.map(() => '?').join(', ');
+
+  const [coverRows, countRows, transactionRows] = await Promise.all([
+    all(
+      `SELECT DISTINCT ON (product_id) product_id, image_url
+       FROM product_images
+       WHERE product_id IN (${placeholders})
+       ORDER BY product_id,
+                CASE WHEN is_cover THEN 0 ELSE 1 END,
+                sort_order ASC,
+                id ASC`,
+      productIds
+    ),
+    all(
+      `SELECT product_id, COUNT(*)::INTEGER AS image_count
+       FROM product_images
+       WHERE product_id IN (${placeholders})
+       GROUP BY product_id`,
+      productIds
+    ),
+    // Only reservations and in-progress loans can affect the displayed status, so
+    // this is a handful of rows even across a full page of products. Ranking them
+    // in JavaScript keeps one ORDER BY definition (compareTransactionRows) shared
+    // by every caller.
+    all(
+      `SELECT id, product_id, borrower_id, status, picked_up_at, approved_at, created_at
+       FROM notifications
+       WHERE product_id IN (${placeholders})
+         AND status IN ('approved', 'active')`,
+      productIds
+    )
+  ]);
+
+  const coverImages = new Map(coverRows.map((row) => [Number(row.product_id), row.image_url]));
+  const imageCounts = new Map(
+    countRows.map((row) => [Number(row.product_id), Number(row.image_count) || 0])
+  );
+
+  const transactionsByProduct = new Map();
+
+  for (const row of transactionRows) {
+    const productId = Number(row.product_id);
+    const existing = transactionsByProduct.get(productId);
+
+    if (existing) {
+      existing.push(row);
+      continue;
+    }
+
+    transactionsByProduct.set(productId, [row]);
+  }
+
+  return { coverImages, imageCounts, transactionsByProduct };
+}
+
+function hydrateWithRelations(product, relations) {
+  const productId = Number(product.Product_ID);
+  const coverImage = relations.coverImages.get(productId) || '';
+  const candidates = relations.transactionsByProduct?.get(productId) || [];
+  // A product with an assigned borrower reports that borrower's loan; otherwise
+  // the highest-ranked loan on the product.
+  const scoped = product.Product_Borrower_ID
+    ? candidates.filter((row) => Number(row.borrower_id) === Number(product.Product_Borrower_ID))
+    : candidates;
+  const [currentTransaction] = [...scoped].sort(compareTransactionRows);
+
+  return {
+    ...product,
+    Product_Url: resolveProductImageUrl(coverImage || product.Product_Url || DEFAULT_PRODUCT_IMAGE),
+    image_count: relations.imageCounts.get(productId) || 0,
+    Current_Transaction_Status: currentTransaction?.status || ''
+  };
+}
+
+async function hydrateProductRows(products) {
+  const relations = await loadProductRelations(products.map((product) => Number(product.Product_ID)));
+  return products.map((product) => hydrateWithRelations(product, relations));
+}
+
 async function hydrateProductRow(product) {
   if (!product) {
     return product;
   }
 
-  const [coverImage, imageCount, currentTransactionStatus] = await Promise.all([
-    getCoverImageUrl(product.Product_ID),
-    countProductImages(product.Product_ID),
-    getCurrentTransactionStatus(product.Product_ID, product.Product_Borrower_ID)
-  ]);
+  const [hydrated] = await hydrateProductRows([product]);
+  return hydrated;
+}
+
+function buildListFilters({ search, condition, maxPrice }) {
+  const clauses = ['"Product_Is_Active" = 1'];
+  const params = [];
+
+  if (search) {
+    clauses.push('("Product_Name" ILIKE ? OR COALESCE("Product_Description", \'\') ILIKE ? OR COALESCE("Product_Condition", \'\') ILIKE ?)');
+    const pattern = `%${search}%`;
+    params.push(pattern, pattern, pattern);
+  }
+
+  if (condition) {
+    clauses.push('"Product_Condition" = ?');
+    params.push(condition);
+  }
+
+  if (maxPrice !== null) {
+    clauses.push('"Product_Lending_Charge" <= ?');
+    params.push(maxPrice);
+  }
+
+  return { clauses, params };
+}
+
+// Every sort ends in "Product_ID" DESC so the ordering is total: without a unique
+// tiebreaker, rows sharing a price have no stable position and a cursor cannot
+// name an unambiguous resume point.
+function buildListKeyset(sort, cursorValues) {
+  if (sort === 'price_asc') {
+    return {
+      orderBy: 'ORDER BY "Product_Lending_Charge" ASC, "Product_ID" DESC',
+      clause: cursorValues
+        ? '("Product_Lending_Charge" > ? OR ("Product_Lending_Charge" = ? AND "Product_ID" < ?))'
+        : '',
+      params: cursorValues ? [cursorValues[0], cursorValues[0], cursorValues[1]] : [],
+      cursorLength: 2,
+      toCursor: (row) => encodeCursor([row.Product_Lending_Charge, row.Product_ID])
+    };
+  }
+
+  if (sort === 'price_desc') {
+    return {
+      orderBy: 'ORDER BY "Product_Lending_Charge" DESC, "Product_ID" DESC',
+      clause: cursorValues
+        ? '("Product_Lending_Charge" < ? OR ("Product_Lending_Charge" = ? AND "Product_ID" < ?))'
+        : '',
+      params: cursorValues ? [cursorValues[0], cursorValues[0], cursorValues[1]] : [],
+      cursorLength: 2,
+      toCursor: (row) => encodeCursor([row.Product_Lending_Charge, row.Product_ID])
+    };
+  }
 
   return {
-    ...product,
-    Product_Url: resolveProductImageUrl(coverImage || product.Product_Url || DEFAULT_PRODUCT_IMAGE),
-    image_count: imageCount,
-    Current_Transaction_Status: currentTransactionStatus
+    orderBy: 'ORDER BY "Product_ID" DESC',
+    clause: cursorValues ? '"Product_ID" < ?' : '',
+    params: cursorValues ? [cursorValues[0]] : [],
+    cursorLength: 1,
+    toCursor: (row) => encodeCursor([row.Product_ID])
   };
 }
 
-async function listProducts() {
-  const products = await all(
+async function listProducts({
+  limit,
+  cursor = null,
+  search = '',
+  condition = '',
+  maxPrice = null,
+  sort = 'newest'
+} = {}) {
+  const pageSize = normalizeLimit(limit);
+  const resolvedSort = PRODUCT_SORTS.includes(sort) ? sort : 'newest';
+  const cursorLength = resolvedSort === 'newest' ? 1 : 2;
+  const keyset = buildListKeyset(resolvedSort, decodeCursor(cursor, cursorLength));
+  const filters = buildListFilters({
+    search: typeof search === 'string' ? search.trim() : '',
+    condition: typeof condition === 'string' ? condition.trim() : '',
+    maxPrice: Number.isFinite(Number(maxPrice)) && maxPrice !== null ? Number(maxPrice) : null
+  });
+
+  if (keyset.clause) {
+    filters.clauses.push(keyset.clause);
+    filters.params.push(...keyset.params);
+  }
+
+  // One row beyond the page tells us whether a next page exists without a
+  // separate COUNT over the whole filtered set.
+  const rows = await all(
     `SELECT ${PRODUCT_SELECT_FIELDS_SQL}
      FROM products
-     WHERE "Product_Is_Active" = 1
-     ORDER BY "Product_ID" DESC`
+     WHERE ${filters.clauses.join(' AND ')}
+     ${keyset.orderBy}
+     LIMIT ?`,
+    [...filters.params, pageSize + 1]
   );
 
-  return Promise.all(products.map((product) => hydrateProductRow(product)));
+  const hasMore = rows.length > pageSize;
+  const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+
+  return {
+    items: await hydrateProductRows(pageRows),
+    nextCursor: hasMore ? keyset.toCursor(pageRows[pageRows.length - 1]) : null
+  };
 }
 
 async function createProduct({ name, lenderId, description, condition, price, imageUrl }) {
@@ -149,69 +346,6 @@ function listProductImages(productId) {
   );
 }
 
-async function getCoverImageUrl(productId) {
-  const coverImage = await get(
-    `SELECT image_url
-     FROM product_images
-     WHERE product_id = ?
-     ORDER BY CASE WHEN is_cover THEN 0 ELSE 1 END,
-              sort_order ASC,
-              id ASC
-     LIMIT 1`,
-    [productId]
-  );
-
-  return coverImage?.image_url || '';
-}
-
-async function countProductImages(productId) {
-  const row = await get(
-    'SELECT COUNT(*)::INTEGER AS image_count FROM product_images WHERE product_id = ?',
-    [productId]
-  );
-
-  return Number(row?.image_count) || 0;
-}
-
-async function getCurrentTransactionStatus(productId, borrowerId) {
-  let row;
-
-  if (borrowerId) {
-    row = await get(
-      `SELECT status
-       FROM notifications
-       WHERE product_id = ?
-         AND status IN ('approved', 'active')
-         AND borrower_id = ?
-       ORDER BY CASE status
-                  WHEN 'active' THEN 0
-                  ELSE 1
-                END,
-                COALESCE(picked_up_at, approved_at, created_at) DESC,
-                id DESC
-       LIMIT 1`,
-      [productId, borrowerId]
-    );
-  } else {
-    row = await get(
-      `SELECT status
-       FROM notifications
-       WHERE product_id = ?
-         AND status IN ('approved', 'active')
-       ORDER BY CASE status
-                  WHEN 'active' THEN 0
-                  ELSE 1
-                END,
-                COALESCE(picked_up_at, approved_at, created_at) DESC,
-                id DESC
-       LIMIT 1`,
-      [productId]
-    );
-  }
-
-  return row?.status || '';
-}
-
 async function updateCoverImage(productId, imageUrl) {
   await run(
     'UPDATE products SET "Product_Url" = ? WHERE "Product_ID" = ?',
@@ -281,6 +415,7 @@ async function deactivateProduct(productId) {
 }
 
 module.exports = {
+  PRODUCT_SORTS,
   listProducts,
   createProduct,
   findById,

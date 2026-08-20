@@ -81,6 +81,15 @@ async function query(sql, params = []) {
   return executor.query(text, params);
 }
 
+// Runs SQL verbatim, without the `?` -> `$n` rewrite the other helpers apply.
+// Migration files are authored as plain Postgres and may legitimately contain a
+// literal `?`, which convertPositionalParameters would silently turn into a
+// placeholder the statement has no binding for.
+async function exec(sql) {
+  const executor = getExecutor();
+  return executor.query(sql);
+}
+
 async function run(sql, params = []) {
   const result = await query(sql, params);
   return {
@@ -134,6 +143,7 @@ function close() {
 
 module.exports = {
   db,
+  exec,
   run,
   get,
   all,

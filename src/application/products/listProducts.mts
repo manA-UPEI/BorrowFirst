@@ -1,12 +1,15 @@
-import type { Product } from '../../domain/products/product.mjs';
-import type { ProductRepository } from '../ports/productRepository.mjs';
+import type {
+  ProductListQuery,
+  ProductPage,
+  ProductRepository
+} from '../ports/productRepository.mjs';
 
 export interface ListProducts {
-  execute(): Promise<readonly Product[]>;
+  execute(query?: ProductListQuery): Promise<ProductPage>;
 }
 
 export function createListProducts(productRepository: ProductRepository): ListProducts {
   return {
-    execute: () => productRepository.listActive()
+    execute: (query) => productRepository.listActive(query)
   };
 }

@@ -1,7 +1,7 @@
 import { mountShell } from './layout.mjs';
 import { getJson, postJson } from './api.js';
 import { appendStatusDetails, createProfileLinkButton, renderRatings } from './cards.mjs';
-import { formatDateLabel, formatDateTimeLabel, formatPrice, getQueryParam, getUserProfilePath } from './format.mjs';
+import { formatDateLabel, formatDateTimeLabel, formatPrice, getQueryParam } from './format.mjs';
 import { getAddressValidationMessage, getCountryValidationMessage, getPhoneValidationMessage, isValidUpeiEmail } from './validate.mjs';
 import {
   appendLabeledParagraph,

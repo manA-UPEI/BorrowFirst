@@ -1,4 +1,4 @@
-import { getJson } from './api.js';
+import { getAllPages, getJson } from './api.js';
 import {
   createEmptyState,
   getCatalogProducts,
@@ -61,7 +61,7 @@ async function loadProducts() {
   productMessage.textContent = '';
 
   try {
-    products = await getJson('/api/products');
+    products = await getAllPages('/api/products');
     renderProducts();
   } catch (error) {
     productGrid.replaceChildren(

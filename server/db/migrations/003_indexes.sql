@@ -1,0 +1,12 @@
+CREATE UNIQUE INDEX IF NOT EXISTS idx_product_images_product_sort_order ON product_images(product_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_product_images_product_cover ON product_images(product_id, is_cover, sort_order);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pickup_options_product_option ON pickup_options(product_id, option_index);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ratings_user_rater ON ratings(user_id, rater_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_lender_status ON notifications(lender_id, status, created_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_borrower_status ON notifications(borrower_id, status, created_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_status_approval_expiry ON notifications(status, approval_expires_at);
+CREATE INDEX IF NOT EXISTS idx_products_lender ON products("Product_Lender_ID");
+CREATE INDEX IF NOT EXISTS idx_products_borrower ON products("Product_Borrower_ID");
+CREATE INDEX IF NOT EXISTS idx_products_active ON products("Product_Is_Active");
+CREATE INDEX IF NOT EXISTS idx_ratings_user_created_at ON ratings(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_rate_limits_reset_at ON rate_limits(reset_at);

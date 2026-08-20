@@ -2,146 +2,26 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 process.env.NODE_ENV = 'test';
-delete process.env.DATABASE_URL;
-process.env.SESSION_SECRET = 'test-session-secret-1234567890';
-process.env.APP_ORIGIN = 'http://127.0.0.1';
-process.env.SESSION_NAME = 'borrowfirst.sid';
 process.env.REGISTRATION_OTP_ENABLED = 'true';
 
-const createApp = require('../../server/app');
+const {
+  apiRequest,
+  readSessionCookie,
+  resetDatabase,
+  seedUser,
+  startTestServer,
+  stopTestServer
+} = require('./helpers/httpHarness');
 const initializeDatabase = require('../../server/db/init');
-const { run, get, close } = require('../../server/db/connection');
-const { hashPassword } = require('../../server/services/passwordService');
+const { run, get } = require('../../server/db/connection');
 const { validateEnvironment } = require('../../server');
-const nativeFetch = global.fetch;
-
-let server;
-let baseUrl;
-
-function getOrigin() {
-  return process.env.APP_ORIGIN;
-}
-
-async function startServer() {
-  const app = await createApp();
-
-  return new Promise((resolve) => {
-    const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
-  });
-}
-
-async function apiRequest(requestPath, {
-  method = 'GET',
-  body,
-  cookie = '',
-  origin = getOrigin(),
-  headers = {}
-} = {}) {
-  const requestHeaders = { ...headers };
-
-  if (body !== undefined) {
-    requestHeaders['Content-Type'] = 'application/json';
-  }
-
-  if (cookie) {
-    requestHeaders.Cookie = cookie;
-  }
-
-  if (method !== 'GET' && origin) {
-    requestHeaders.Origin = origin;
-  }
-
-  const response = await nativeFetch(`${baseUrl}${requestPath}`, {
-    method,
-    headers: requestHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    redirect: 'manual'
-  });
-
-  const contentType = response.headers.get('content-type') || '';
-  const payload = contentType.includes('application/json')
-    ? await response.json()
-    : await response.text();
-
-  return { response, payload };
-}
-
-function readSessionCookie(response) {
-  const setCookie = response.headers.get('set-cookie') || '';
-  return setCookie.split(';')[0];
-}
-
-async function resetDatabase() {
-  await run('DELETE FROM session');
-  await run('DELETE FROM account');
-  await run('DELETE FROM verification');
-  await run('DELETE FROM rate_limits');
-  await run('DELETE FROM notifications');
-  await run('DELETE FROM pickup_options');
-  await run('DELETE FROM product_images');
-  await run('DELETE FROM products');
-  await run('DELETE FROM ratings');
-  await run('DELETE FROM users');
-}
-
-async function seedUser({
-  username = 'alice',
-  fullName = 'Alice Example',
-  email = 'alice@upei.ca',
-  password = 'StrongPassword123!',
-  address = '123 University Avenue',
-  phone = '+19025550100',
-  country = 'Canada'
-} = {}) {
-  const result = await run(
-    `INSERT INTO users (username, full_name, email, password, address, phone, country, email_verified)
-     VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
-     RETURNING id AS "lastID"`,
-    [username, fullName, email, hashPassword(password), address, phone, country]
-  );
-
-  // Mirrors the one-time backfill in server/db/init.js: a user row alone isn't
-  // enough to sign in through Better Auth, which keeps credential passwords on a
-  // separate "account" row.
-  await run(
-    `INSERT INTO account (issuer, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
-     VALUES ('local:credential', ?, 'credential', ?, ?, NOW(), NOW())`,
-    [String(result.lastID), result.lastID, hashPassword(password)]
-  );
-
-  return {
-    id: result.lastID,
-    username,
-    fullName,
-    email,
-    password
-  };
-}
 
 test.before(async () => {
-  server = await startServer();
-  const address = server.address();
-  baseUrl = `http://127.0.0.1:${address.port}`;
-  process.env.APP_ORIGIN = baseUrl;
+  await startTestServer();
 });
 
 test.after(async () => {
-  if (!server) {
-    await close();
-    return;
-  }
-
-  await new Promise((resolve, reject) => {
-    server.close((error) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-
-      resolve();
-    });
-  });
-  await close();
+  await stopTestServer();
 });
 
 test.beforeEach(async () => {

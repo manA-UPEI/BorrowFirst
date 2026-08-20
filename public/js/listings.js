@@ -1,4 +1,4 @@
-import { getJson, postForm } from './api.js';
+import { getAllPages, getJson, postForm } from './api.js';
 import { getOwnedProducts, removeListing, renderCardGrid } from './catalog.mjs';
 import { mountShell } from './layout.mjs';
 import { renderSkeletons, showToast } from './ui.mjs';
@@ -114,7 +114,7 @@ async function loadProducts() {
   listingMessage.textContent = '';
 
   try {
-    products = await getJson('/api/products');
+    products = await getAllPages('/api/products');
     renderListings();
   } catch (error) {
     listingMessage.textContent = error.message || 'Unable to load your listings.';

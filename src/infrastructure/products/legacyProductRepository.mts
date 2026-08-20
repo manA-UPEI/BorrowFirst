@@ -1,10 +1,17 @@
 import { createRequire } from 'node:module';
 import type { Product } from '../../domain/products/product.mjs';
-import type { ProductRepository } from '../../application/ports/productRepository.mjs';
+import type {
+  ProductListQuery,
+  ProductPage,
+  ProductRepository
+} from '../../application/ports/productRepository.mjs';
 
 const loadLegacyModule = createRequire(import.meta.url);
 const legacyProductModel = loadLegacyModule('../../../../server/models/productModel') as {
-  listProducts: () => Promise<readonly Record<string, unknown>[]>;
+  listProducts: (query?: ProductListQuery) => Promise<{
+    items: readonly Record<string, unknown>[];
+    nextCursor: string | null;
+  }>;
 };
 
 function toProduct(row: Record<string, unknown>): Product {
@@ -25,9 +32,13 @@ function toProduct(row: Record<string, unknown>): Product {
 
 export function createLegacyProductRepository(): ProductRepository {
   return {
-    async listActive() {
-      const rows = await legacyProductModel.listProducts();
-      return rows.map(toProduct);
+    async listActive(query?: ProductListQuery): Promise<ProductPage> {
+      const page = await legacyProductModel.listProducts(query);
+
+      return {
+        items: page.items.map(toProduct),
+        nextCursor: page.nextCursor
+      };
     }
   };
 }

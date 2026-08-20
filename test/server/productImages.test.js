@@ -279,8 +279,8 @@ test('multipart product creation stores Cloudinary-backed images and cover metad
       { imageUrl: uploadedUrls[2], sortOrder: 2, isCover: false }
     ]
   );
-  assert.equal(listResponse.payload[0].image_count, 3);
-  assert.equal(listResponse.payload[0].Product_Url, uploadedUrls[1]);
+  assert.equal(listResponse.payload.items[0].image_count, 3);
+  assert.equal(listResponse.payload.items[0].Product_Url, uploadedUrls[1]);
   assert.deepEqual(
     detailsResponse.payload.images.map((image) => ({
       url: image.url,
