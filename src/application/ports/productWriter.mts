@@ -23,4 +23,18 @@ export interface ProductWriter {
     isCover: boolean;
   }): Promise<void>;
   updateCoverImage(productId: number, imageUrl: string): Promise<void>;
+  replacePickupOptions(productId: number, windows: readonly PickupWindow[]): Promise<void>;
+  replaceAvailability(productId: number, windows: readonly AvailabilityInput[]): Promise<void>;
+}
+
+export interface PickupWindow {
+  readonly location: string;
+  readonly startTime: string;
+  readonly endTime: string;
+}
+
+export interface AvailabilityInput {
+  readonly kind: 'available' | 'blackout';
+  readonly startDate: string;
+  readonly endDate: string;
 }

@@ -1,3 +1,4 @@
+import { toDateOnly } from '../../domain/booking/availability.mjs';
 import type { NotificationCommandRepository, NotificationCommandServices } from '../ports/notificationCommand.mjs';
 
 const ACTIONS = new Set([
@@ -30,7 +31,7 @@ function timeMinutes(value: string): number {
   if (match[3].toUpperCase() === 'PM') hours += 12;
   return hours * 60 + Number(match[2]);
 }
-function validatePickup(value: string, option: any, dueDate: string): string {
+function validatePickup(value: string, option: any, dueDate: string, startDate: string): string {
   if (!validDateTime(value)) return 'Invalid pickup meetup date and time';
   if (!futureDateTime(value)) return 'Pickup meetup must be in the future';
   const meetup = Number(value.slice(11, 13)) * 60 + Number(value.slice(14, 16));
@@ -38,7 +39,14 @@ function validatePickup(value: string, option: any, dueDate: string): string {
   const end = timeMinutes(option.end_time);
   if ([meetup, start, end].some(Number.isNaN)) return 'Pickup option availability is invalid';
   if (meetup < start || meetup > end) return `Pickup meetup must be between ${option.start_time} and ${option.end_time}`;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dueDate) && dueDate < value.slice(0, 10)) {
+  // A lender may move the meetup time while approving. The booked range is what
+  // the borrower agreed to and what blocks the calendar, so the handover cannot
+  // be rescheduled off the first booked day.
+  if (startDate && value.slice(0, 10) !== startDate) {
+    return 'Pickup meetup must be on the first day of the booking';
+  }
+  // Legacy rows predate start_date and are only bounded by the due date.
+  if (!startDate && /^\d{4}-\d{2}-\d{2}$/.test(dueDate) && dueDate < value.slice(0, 10)) {
     return 'Due date must be on or after the pickup meetup date';
   }
   return '';
@@ -57,6 +65,24 @@ function isFutureTimestamp(value: unknown): boolean {
   if (typeof value !== 'string' && !(value instanceof Date)) return false;
   const time = new Date(value as string | Date).getTime();
   return Number.isFinite(time) && time > Date.now();
+}
+
+// Recovers the minute-precision "YYYY-MM-DDTHH:MM" a fresh datetime-local
+// submission always has, from a value that has round-tripped through storage.
+//
+// A stored value shows up in two different shapes depending on the database:
+// real Postgres, via the timezone-naive TIMESTAMP parser in connection.js,
+// yields a string with seconds ("...T14:00:00"); pg-mem -- the in-memory
+// fallback the test suite and DATABASE_URL-less local dev use -- ignores that
+// parser and hands back a JS Date instead, one it built by reading the naive
+// wall-clock string as if it were UTC. Both cases converge on the same answer:
+// the first 16 characters of a string, or of a Date's toISOString() (which is
+// UTC-based, matching how pg-mem constructed it), are the original wall-clock
+// value either way.
+function toMeetupInputValue(value: unknown): string {
+  if (typeof value === 'string') return value.slice(0, 16);
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 16);
+  return '';
 }
 
 export function createUpdateNotificationUseCase(
@@ -102,8 +128,18 @@ export function createUpdateNotificationUseCase(
           await repository.ensurePickupOptions(notification.product_id);
           const option = (await repository.listPickupOptions(notification.product_id)).find((item) => item.option_index === notification.pickup_option);
           if (!option) throw new NotificationCommandError(400, 'Invalid pickup option');
-          const finalMeetup = pickupMeetupAt || notification.pickup_meetup_at;
-          const pickupError = validatePickup(finalMeetup, option, notification.due_date);
+          // A lender approving without changing the meetup time (the only path the
+          // Requests UI exercises) falls back to what the borrower originally
+          // submitted. That stored value needs the same normalization a fresh
+          // submission already has, or it fails the strict HH:MM regex below
+          // every single time -- this used to make every such approval fail.
+          const finalMeetup = pickupMeetupAt || toMeetupInputValue(notification.pickup_meetup_at);
+          const pickupError = validatePickup(
+            finalMeetup,
+            option,
+            toDateOnly(notification.due_date),
+            toDateOnly(notification.start_date)
+          );
           if (pickupError) throw new NotificationCommandError(400, pickupError);
           const pickupCode = services.createPickupCode(id);
           await repository.setApprovedReservation(id, {

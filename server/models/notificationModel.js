@@ -7,6 +7,7 @@ const BASE_TRANSACTION_COLUMNS = `
   n.product_id,
   n.pickup_option,
   n.pickup_meetup_at,
+  n.start_date,
   n.due_date,
   n.approved_at,
   n.approval_expires_at,
@@ -47,6 +48,7 @@ async function createNotification({
   borrowerId,
   pickupOption,
   pickupMeetupAt,
+  startDate,
   dueDate
 }) {
   const result = await run(
@@ -56,14 +58,43 @@ async function createNotification({
       borrower_id,
       pickup_option,
       pickup_meetup_at,
+      start_date,
       due_date,
       status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING id AS "lastID"`,
-    [productId, lenderId, borrowerId, pickupOption, pickupMeetupAt, dueDate, 'pending']
+    [productId, lenderId, borrowerId, pickupOption, pickupMeetupAt, startDate, dueDate, 'pending']
   );
 
   return result.lastID;
+}
+
+// The date ranges on a product that are already spoken for. Only approvals and
+// live loans count: several borrowers may hold overlapping *pending* requests for
+// the same days, and it is the lender's choice which one becomes real. The
+// exclusion is for re-checking a request at approval time without it clashing
+// with itself.
+function listBookedRanges(productId, excludeNotificationId = null) {
+  if (excludeNotificationId) {
+    return all(
+      `SELECT id, start_date, due_date
+       FROM notifications
+       WHERE product_id = ?
+         AND status IN ('approved', 'active')
+         AND id <> ?
+       ORDER BY start_date ASC, id ASC`,
+      [productId, excludeNotificationId]
+    );
+  }
+
+  return all(
+    `SELECT id, start_date, due_date
+     FROM notifications
+     WHERE product_id = ?
+       AND status IN ('approved', 'active')
+     ORDER BY start_date ASC, id ASC`,
+    [productId]
+  );
 }
 
 function findById(notificationId) {
@@ -405,6 +436,7 @@ async function rejectPendingForProduct(productId) {
 
 module.exports = {
   createNotification,
+  listBookedRanges,
   findById,
   findPendingForBorrower,
   findBorrowerApprovedTransactionsNeedingPickupCode,

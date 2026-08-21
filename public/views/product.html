@@ -13,7 +13,7 @@
     <div class="page-head">
       <div>
         <h1 id="productTitle">Product</h1>
-        <p class="subtitle">Review the listing, choose a pickup slot, and set your return plan.</p>
+        <p class="subtitle">Review the listing, pick your dates, and choose a pickup slot.</p>
       </div>
     </div>
 
@@ -47,22 +47,28 @@
     <section class="pickup-section">
       <div class="section-header">
         <div>
-          <h2>Choose Pickup and Return Timing</h2>
-          <p class="subtitle">Select an approved pickup option, lock in your meetup time, and set a due date that fits the handoff.</p>
+          <h2>Choose Your Dates</h2>
+          <p class="subtitle">Choose the days you need the item, then pick a handover window on your start date.</p>
         </div>
       </div>
       <div class="booking-single">
         <div class="booking-form-shell">
           <div class="field">
+            <label for="startDate">Start Date</label>
+            <input id="startDate" type="date" required />
+            <p class="helper">The first day you will have the item. Pickup happens on this day.</p>
+          </div>
+          <div class="field">
+            <label for="dueDate">Return Date</label>
+            <input id="dueDate" type="date" required />
+            <p class="helper">Late returns accrue a daily late fee equal to 20% of the item price.</p>
+          </div>
+          <div class="field">
             <label for="pickupMeetupAt">Pickup Meetup</label>
             <input id="pickupMeetupAt" type="datetime-local" required />
             <p id="pickupWindowHint" class="helper">Select a pickup option to see the allowed meetup window.</p>
           </div>
-          <div class="field">
-            <label for="dueDate">Due Date</label>
-            <input id="dueDate" type="date" required />
-            <p class="helper">Late returns accrue a daily late fee equal to 20% of the item price.</p>
-          </div>
+          <div id="availabilityNotice" class="helper" aria-live="polite"></div>
           <form id="pickupForm" class="pickup-options"></form>
           <button class="primary" id="continueButton" type="button">Continue</button>
           <p id="error" class="error"></p>

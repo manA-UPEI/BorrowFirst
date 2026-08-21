@@ -25,6 +25,8 @@ export async function createProductHandler(request: any, response: any): Promise
         imageUrl: request.body.imageUrl
       },
       coverIndex: request.body.coverIndex,
+      pickupWindows: request.body.pickupWindows,
+      availability: request.body.availability,
       files: (Array.isArray(request.files) ? request.files : []).map((file: any) => ({
         buffer: file.buffer,
         mimeType: file.mimetype,

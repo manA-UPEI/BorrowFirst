@@ -60,6 +60,18 @@
           <p id="productImagePreviewStatus" class="helper">No photos selected. The placeholder image will be used.</p>
           <div id="productImagePreviewList" class="product-image-preview-grid"></div>
         </div>
+        <div class="field">
+          <label>Pickup Windows (Optional)</label>
+          <p class="helper">Where and when you can hand the item over. Leave empty to use the default campus spots.</p>
+          <div id="pickupWindowRows" class="repeat-rows"></div>
+          <button class="ghost" id="addPickupWindow" type="button">Add pickup window</button>
+        </div>
+        <div class="field">
+          <label>Availability (Optional)</label>
+          <p class="helper">Date ranges you are willing to lend in, and any days to block out. Leave empty to stay available at any time.</p>
+          <div id="availabilityRows" class="repeat-rows"></div>
+          <button class="ghost" id="addAvailability" type="button">Add availability range</button>
+        </div>
         <button class="primary" type="submit">Add Item</button>
         <p id="lendMessage" class="error"></p>
       </form>

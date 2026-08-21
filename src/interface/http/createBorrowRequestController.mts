@@ -16,6 +16,7 @@ export async function createBorrowRequestHandler(request: any, response: any): P
       productId: request.body.productId,
       pickupOption: request.body.pickupOption,
       pickupMeetupAt: request.body.pickupMeetupAt,
+      startDate: request.body.startDate,
       dueDate: request.body.dueDate
     });
     response.json({ success: true, id });

@@ -8,6 +8,7 @@ mountShell({ current: 'home' });
 
 const productId = getRouteId();
 const slot = getQueryParam('slot');
+const startDate = getQueryParam('startDate');
 const dueDate = getQueryParam('dueDate');
 const initialPickupMeetupAt = getQueryParam('pickupMeetupAt');
 const summary = document.getElementById('summary');
@@ -64,7 +65,8 @@ async function loadSummary() {
           ? `${selectedPickupOption.start_time} - ${selectedPickupOption.end_time}`
           : 'N/A'
       },
-      { label: 'Due Date', value: formatDateLabel(dueDate) },
+      { label: 'Start Date', value: formatDateLabel(startDate) },
+      { label: 'Return Date', value: formatDateLabel(dueDate) },
       { label: 'Daily Rate', value: formatPrice(product.Product_Lending_Charge) }
     ]);
     pickupWindowHint.textContent = selectedPickupOption
@@ -149,12 +151,22 @@ okButton.addEventListener('click', async () => {
   }
 
   if (!isValidDueDate(dueDate)) {
-    confirmMessage.textContent = 'Invalid due date selected.';
+    confirmMessage.textContent = 'Invalid return date selected.';
     return;
   }
 
-  if (dueDate < getTodayDateValue()) {
-    confirmMessage.textContent = 'Due date cannot be in the past.';
+  if (!isValidDueDate(startDate)) {
+    confirmMessage.textContent = 'Invalid start date selected.';
+    return;
+  }
+
+  if (startDate < getTodayDateValue()) {
+    confirmMessage.textContent = 'Start date cannot be in the past.';
+    return;
+  }
+
+  if (dueDate < startDate) {
+    confirmMessage.textContent = 'Return date must be on or after the start date.';
     return;
   }
 
@@ -163,7 +175,8 @@ okButton.addEventListener('click', async () => {
     pickupMeetupAt,
     selectedPickupOption?.start_time,
     selectedPickupOption?.end_time,
-    dueDate
+    dueDate,
+    startDate
   );
 
   if (pickupMeetupMessage) {
@@ -176,6 +189,7 @@ okButton.addEventListener('click', async () => {
       productId: Number(productId),
       pickupOption,
       pickupMeetupAt,
+      startDate,
       dueDate
     });
 

@@ -392,6 +392,24 @@ button:disabled {
   font-weight: 500;
 }
 
+/* Optional repeatable rows on the listing form: pickup windows and availability
+   ranges. The trailing auto column holds the Remove button. */
+.repeat-rows { display: grid; gap: var(--sp-2); }
+
+.repeat-rows:empty { display: none; }
+
+.repeat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .repeat-row { grid-template-columns: 1fr 1fr; }
+  .repeat-row > *:first-child { grid-column: 1 / -1; }
+}
+
 input,
 select,
 textarea {

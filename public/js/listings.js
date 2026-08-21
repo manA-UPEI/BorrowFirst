@@ -138,6 +138,89 @@ async function handleRemoveListing(product) {
   }
 }
 
+const pickupWindowRows = document.getElementById('pickupWindowRows');
+const availabilityRows = document.getElementById('availabilityRows');
+
+// Small repeatable-row builder shared by the two optional sections. Rows are
+// read back out of the DOM at submit time rather than mirrored into state, so
+// there is one source of truth for what the lender typed.
+function createRepeatRow(fields) {
+  const row = document.createElement('div');
+  row.className = 'repeat-row';
+
+  fields.forEach((field) => {
+    const control = document.createElement(field.tag || 'input');
+
+    if (field.tag === 'select') {
+      field.options.forEach((option) => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.label;
+        control.appendChild(optionElement);
+      });
+    } else {
+      control.type = field.type;
+
+      if (field.placeholder) {
+        control.placeholder = field.placeholder;
+      }
+
+      if (field.maxLength) {
+        control.maxLength = field.maxLength;
+      }
+    }
+
+    control.dataset.role = field.role;
+    control.setAttribute('aria-label', field.label);
+    row.appendChild(control);
+  });
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'ghost';
+  remove.textContent = 'Remove';
+  remove.addEventListener('click', () => row.remove());
+  row.appendChild(remove);
+
+  return row;
+}
+
+function addPickupWindowRow() {
+  pickupWindowRows.appendChild(createRepeatRow([
+    { role: 'location', type: 'text', label: 'Pickup location', placeholder: 'Robertson Library desk', maxLength: 80 },
+    { role: 'startTime', type: 'time', label: 'Window start' },
+    { role: 'endTime', type: 'time', label: 'Window end' }
+  ]));
+}
+
+function addAvailabilityRow() {
+  availabilityRows.appendChild(createRepeatRow([
+    {
+      role: 'kind',
+      tag: 'select',
+      label: 'Range type',
+      options: [
+        { value: 'available', label: 'Available' },
+        { value: 'blackout', label: 'Blocked out' }
+      ]
+    },
+    { role: 'startDate', type: 'date', label: 'Range start' },
+    { role: 'endDate', type: 'date', label: 'Range end' }
+  ]));
+}
+
+function readRepeatRows(container, roles) {
+  return Array.from(container.querySelectorAll('.repeat-row')).map((row) => {
+    const entry = {};
+
+    roles.forEach((role) => {
+      entry[role] = row.querySelector(`[data-role="${role}"]`)?.value.trim() || '';
+    });
+
+    return entry;
+  }).filter((entry) => roles.some((role) => entry[role]));
+}
+
 async function handleLendSubmit(event) {
   event.preventDefault();
   lendMessage.textContent = '';
@@ -168,17 +251,26 @@ async function handleLendSubmit(event) {
     return;
   }
 
+  const pickupWindows = readRepeatRows(pickupWindowRows, ['location', 'startTime', 'endTime']);
+  const availability = readRepeatRows(availabilityRows, ['kind', 'startDate', 'endDate']);
+
   try {
     const formData = createProductListingFormData({
       name,
       price,
       condition,
-      description
+      description,
+      // Only send these when the lender filled something in, so an untouched form
+      // still means "defaults and always available".
+      ...(pickupWindows.length ? { pickupWindows: JSON.stringify(pickupWindows) } : {}),
+      ...(availability.length ? { availability: JSON.stringify(availability) } : {})
     }, imageValidation.files, selectedCoverIndex);
 
     await postForm('/api/products', formData);
 
     lendForm.reset();
+    pickupWindowRows.replaceChildren();
+    availabilityRows.replaceChildren();
     resetSelectedImages();
     lendSection.open = false;
     showToast('Item listed. It now appears in your lending shelf.');
@@ -189,6 +281,8 @@ async function handleLendSubmit(event) {
 }
 
 lendForm.addEventListener('submit', handleLendSubmit);
+document.getElementById('addPickupWindow').addEventListener('click', addPickupWindowRow);
+document.getElementById('addAvailability').addEventListener('click', addAvailabilityRow);
 productImageFilesInput.addEventListener('change', handleSelectedImages);
 renderSelectedImagePreviews();
 renderSkeletons(myListingsGrid, 3, 'card');

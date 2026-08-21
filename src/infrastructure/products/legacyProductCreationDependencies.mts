@@ -6,6 +6,7 @@ import type { TransactionRunner } from '../../application/ports/transactionRunne
 
 const loadLegacyModule = createRequire(import.meta.url);
 const productModel = loadLegacyModule('../../../../server/models/productModel') as Record<string, any>;
+const availabilityModel = loadLegacyModule('../../../../server/models/availabilityModel') as Record<string, any>;
 const imageService = loadLegacyModule('../../../../server/services/imageService') as Record<string, any>;
 const imageStorage = loadLegacyModule('../../../../server/services/productImageStorage') as Record<string, any>;
 const validationService = loadLegacyModule('../../../../server/services/validationService') as Record<string, any>;
@@ -27,7 +28,9 @@ export function createLegacyProductWriter(): ProductWriter {
         mimeType: input.asset.mimeType
       });
     },
-    updateCoverImage: productModel.updateCoverImage
+    updateCoverImage: productModel.updateCoverImage,
+    replacePickupOptions: productModel.replacePickupOptions,
+    replaceAvailability: availabilityModel.replaceWindows
   };
 }
 
@@ -45,7 +48,9 @@ export function createLegacyImageStorage(): ImageStorage {
 export function createLegacyProductValidator(): ProductValidator {
   return {
     validateFields: validationService.getValidatedProductFields,
-    validateCoverIndex: validationService.getValidatedProductCoverIndex
+    validateCoverIndex: validationService.getValidatedProductCoverIndex,
+    validatePickupWindows: validationService.getValidatedPickupWindows,
+    validateAvailability: validationService.getValidatedAvailability
   };
 }
 

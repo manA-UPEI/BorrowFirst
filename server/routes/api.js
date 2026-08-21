@@ -9,6 +9,7 @@ const productCreateControllerModule = import('../../dist/src/interface/http/prod
 const productRemoveControllerModule = import('../../dist/src/interface/http/productRemoveController.mjs');
 const pickupOptionsControllerModule = import('../../dist/src/interface/http/pickupOptionsController.mjs');
 const productDetailsControllerModule = import('../../dist/src/interface/http/productDetailsController.mjs');
+const availabilityControllerModule = import('../../dist/src/interface/http/availabilityController.mjs');
 const myTransactionsControllerModule = import('../../dist/src/interface/http/myTransactionsController.mjs');
 const historyControllerModule = import('../../dist/src/interface/http/historyController.mjs');
 const ratingQueryControllerModule = import('../../dist/src/interface/http/ratingQueryController.mjs');
@@ -124,6 +125,10 @@ function createApiRoutes() {
   router.post('/products/:id/remove', asyncHandler(async (req, res) => {
     const { removeProductHandler } = await productRemoveControllerModule;
     return removeProductHandler(req, res);
+  }));
+  router.get('/products/:id/availability', asyncHandler(async (req, res) => {
+    const { availabilityHandler } = await availabilityControllerModule;
+    return availabilityHandler(req, res);
   }));
   router.get('/pickup-options/:productId', asyncHandler(async (req, res) => {
     const { pickupOptionsHandler } = await pickupOptionsControllerModule;

@@ -5,6 +5,7 @@ import type { BorrowRequestRepository } from '../../application/ports/borrowRequ
 const loadLegacyModule = createRequire(import.meta.url);
 const notificationModel = loadLegacyModule('../../../../server/models/notificationModel') as Record<string, any>;
 const productModel = loadLegacyModule('../../../../server/models/productModel') as Record<string, any>;
+const availabilityModel = loadLegacyModule('../../../../server/models/availabilityModel') as Record<string, any>;
 const lifecycleService = loadLegacyModule('../../../../server/services/transactionLifecycleService') as Record<string, any>;
 const loanService = loadLegacyModule('../../../../server/services/loanService') as Record<string, any>;
 
@@ -21,6 +22,8 @@ export function createLegacyBorrowRequestRepository(): BorrowRequestRepository {
       } : null;
     },
     ensurePickupOptions: productModel.ensurePickupOptions,
+    listAvailabilityWindows: availabilityModel.listWindows,
+    listBookedRanges: (productId: number) => notificationModel.listBookedRanges(productId),
     async listPickupOptions(productId) {
       const options = await productModel.listPickupOptions(productId);
       return options.map((option: any) => ({

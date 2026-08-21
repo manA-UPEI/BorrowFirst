@@ -1,18 +1,26 @@
+import {
+  checkBooking,
+  isValidDateOnly,
+  normalizeWindow,
+  toDateOnly,
+  type AvailabilityWindow,
+  type DateRange
+} from '../../domain/booking/availability.mjs';
 import type { BorrowRequestPolicy } from '../ports/borrowRequestPolicy.mjs';
 import type { BorrowRequestRepository, PickupOption } from '../ports/borrowRequestRepository.mjs';
+
+/**
+ * Upper bound on a single loan. Without one, a borrower can reserve an item for
+ * years in a single request and the lender has no way to get it back short of
+ * the overdue path.
+ */
+export const MAX_LOAN_DAYS = 90;
 
 export class BorrowRequestError extends Error {
   constructor(public readonly statusCode: 400 | 404, message: string) {
     super(message);
     this.name = 'BorrowRequestError';
   }
-}
-
-function isValidDateOnly(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
 function getTodayDateValue(date = new Date()): string {
@@ -40,20 +48,39 @@ function parseTime(value: string): number {
   return hours * 60 + Number(match[2]);
 }
 
-function validatePickupMeetup(value: string, option: PickupOption, dueDate: string): string {
+function validatePickupMeetup(value: string, option: PickupOption, startDate: string): string {
   if (!isValidDateTimeLocal(value)) return 'Invalid pickup meetup date and time';
   if (new Date(value).getTime() <= Date.now()) return 'Pickup meetup must be in the future';
-  const meetupMinutes = Number(value.slice(11, 16).split(':')[0]) * 60 + Number(value.slice(14, 16));
+
+  // The handover is what starts the loan, so it happens on the first booked day.
+  // Allowing them to drift apart would make the booked range a fiction.
+  if (value.slice(0, 10) !== startDate) {
+    return 'Pickup meetup must be on the first day of the booking';
+  }
+
+  const meetupMinutes = Number(value.slice(11, 13)) * 60 + Number(value.slice(14, 16));
   const start = parseTime(option.startTime);
   const end = parseTime(option.endTime);
   if ([meetupMinutes, start, end].some(Number.isNaN)) return 'Pickup option availability is invalid';
   if (meetupMinutes < start || meetupMinutes > end) {
     return `Pickup meetup must be between ${option.startTime} and ${option.endTime}`;
   }
-  if (isValidDateOnly(dueDate) && dueDate < value.slice(0, 10)) {
-    return 'Due date must be on or after the pickup meetup date';
-  }
   return '';
+}
+
+function toWindows(rows: readonly Record<string, unknown>[]): AvailabilityWindow[] {
+  return rows
+    .map((row) => normalizeWindow(row))
+    .filter((window): window is AvailabilityWindow => window !== null);
+}
+
+function toBookedRanges(rows: readonly Record<string, unknown>[]): DateRange[] {
+  return rows
+    .map((row) => ({
+      startDate: toDateOnly(row.start_date),
+      endDate: toDateOnly(row.due_date)
+    }))
+    .filter((range) => isValidDateOnly(range.startDate) && isValidDateOnly(range.endDate));
 }
 
 export function createBorrowRequestUseCase(
@@ -66,6 +93,7 @@ export function createBorrowRequestUseCase(
       productId: unknown;
       pickupOption: unknown;
       pickupMeetupAt: unknown;
+      startDate: unknown;
       dueDate: unknown;
     }): Promise<number> {
       await repository.expireStaleApprovals();
@@ -73,12 +101,15 @@ export function createBorrowRequestUseCase(
       const pickupOption = Number(input.pickupOption);
       const pickupMeetupAt = typeof input.pickupMeetupAt === 'string' ? input.pickupMeetupAt.trim() : '';
       const dueDate = typeof input.dueDate === 'string' ? input.dueDate.trim() : '';
+      // A request without an explicit start date is one that predates date ranges;
+      // treat the pickup day as the start so older clients keep working.
+      const startDate = typeof input.startDate === 'string' && input.startDate.trim()
+        ? input.startDate.trim()
+        : pickupMeetupAt.slice(0, 10);
 
       if (!Number.isInteger(productId) || productId <= 0) throw new BorrowRequestError(400, 'Invalid product');
       if (!Number.isInteger(pickupOption) || pickupOption <= 0) throw new BorrowRequestError(400, 'Invalid request');
-      if (!isValidDateOnly(dueDate)) throw new BorrowRequestError(400, 'Invalid due date');
       if (!isValidDateTimeLocal(pickupMeetupAt)) throw new BorrowRequestError(400, 'Invalid pickup meetup date and time');
-      if (dueDate < getTodayDateValue()) throw new BorrowRequestError(400, 'Due date cannot be in the past');
 
       const current = await repository.listCurrentTransactions(input.borrowerId);
       const blocker = current.map((entry) => policy.decorate(entry, input.borrowerId))
@@ -91,10 +122,25 @@ export function createBorrowRequestUseCase(
       if (product.lenderId === input.borrowerId) throw new BorrowRequestError(400, 'Cannot request your own item');
       if (product.borrowerId !== null) throw new BorrowRequestError(400, 'Item is already unavailable');
 
+      const [windowRows, bookedRows] = await Promise.all([
+        repository.listAvailabilityWindows(productId),
+        repository.listBookedRanges(productId)
+      ]);
+
+      const booking = checkBooking({
+        requested: { startDate, endDate: dueDate },
+        windows: toWindows(windowRows),
+        bookedRanges: toBookedRanges(bookedRows),
+        today: getTodayDateValue(),
+        maxLoanDays: MAX_LOAN_DAYS
+      });
+
+      if (!booking.ok) throw new BorrowRequestError(400, booking.reason);
+
       await repository.ensurePickupOptions(productId);
       const option = (await repository.listPickupOptions(productId)).find((item) => item.optionIndex === pickupOption);
       if (!option) throw new BorrowRequestError(400, 'Invalid pickup option');
-      const validationMessage = validatePickupMeetup(pickupMeetupAt, option, dueDate);
+      const validationMessage = validatePickupMeetup(pickupMeetupAt, option, startDate);
       if (validationMessage) throw new BorrowRequestError(400, validationMessage);
       if (await repository.findPendingRequest(productId, input.borrowerId)) {
         throw new BorrowRequestError(400, 'You already requested this item');
@@ -106,6 +152,7 @@ export function createBorrowRequestUseCase(
         borrowerId: input.borrowerId,
         pickupOption,
         pickupMeetupAt,
+        startDate,
         dueDate
       });
     }

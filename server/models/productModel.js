@@ -358,23 +358,39 @@ async function clearProductImages(productId) {
   await updateCoverImage(productId, DEFAULT_PRODUCT_IMAGE);
 }
 
+// Seeds the campus defaults only for a listing that declares no pickup windows
+// at all. This used to backfill each missing index 1..3 independently, which
+// meant a lender who defined a single window silently got two campus locations
+// bolted onto their listing.
 async function ensurePickupOptions(productId) {
   const existingOptions = await all(
     'SELECT option_index FROM pickup_options WHERE product_id = ?',
     [productId]
   );
 
-  const existingIndexes = new Set(existingOptions.map((option) => option.option_index));
+  if (existingOptions.length > 0) {
+    return;
+  }
 
   for (let index = 0; index < DEFAULT_PICKUP_OPTIONS.length; index += 1) {
-    if (existingIndexes.has(index + 1)) {
-      continue;
-    }
-
     const option = DEFAULT_PICKUP_OPTIONS[index];
     await run(
       'INSERT INTO pickup_options (product_id, option_index, location, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
       [productId, index + 1, option[0], option[1], option[2]]
+    );
+  }
+}
+
+// Replaces the lender's pickup windows wholesale. Option indexes are 1-based
+// because notifications.pickup_option has always referred to them that way.
+async function replacePickupOptions(productId, windows) {
+  await run('DELETE FROM pickup_options WHERE product_id = ?', [productId]);
+
+  for (let index = 0; index < windows.length; index += 1) {
+    const window = windows[index];
+    await run(
+      'INSERT INTO pickup_options (product_id, option_index, location, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
+      [productId, index + 1, window.location, window.startTime, window.endTime]
     );
   }
 }
@@ -424,6 +440,7 @@ module.exports = {
   updateCoverImage,
   clearProductImages,
   ensurePickupOptions,
+  replacePickupOptions,
   listPickupOptions,
   assignBorrower,
   releaseBorrower,

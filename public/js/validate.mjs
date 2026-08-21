@@ -104,7 +104,7 @@ export function getAddressValidationMessage(address) {
   return '';
 }
 
-export function getPickupMeetupValidationMessage(value, startTime, endTime, dueDate) {
+export function getPickupMeetupValidationMessage(value, startTime, endTime, dueDate, startDate) {
   if (!isValidDateTimeLocal(value)) {
     return 'Please choose a valid pickup meetup date and time.';
   }
@@ -126,10 +126,85 @@ export function getPickupMeetupValidationMessage(value, startTime, endTime, dueD
   }
 
   if (typeof dueDate === 'string' && dueDate && dueDate < getDateTimeDatePart(value)) {
-    return 'Due date must be on or after the pickup meetup date.';
+    return 'Return date must be on or after the pickup meetup date.';
+  }
+
+  // The handover starts the loan, so it has to happen on the first booked day.
+  // Mirrors the same rule on the server (createBorrowRequest validatePickupMeetup).
+  if (typeof startDate === 'string' && startDate && startDate !== getDateTimeDatePart(value)) {
+    return 'Pickup meetup must be on the first day of your booking.';
   }
 
   return '';
+}
+
+/**
+ * Client-side mirror of the booking rules in
+ * src/domain/booking/availability.mts. The server stays authoritative -- this
+ * exists so a borrower sees why a range is unavailable before submitting.
+ */
+export function getBookingRangeValidationMessage(startDate, endDate, {
+  windows = [],
+  unavailableRanges = [],
+  maxLoanDays = 0,
+  today = ''
+} = {}) {
+  if (!isValidDateOnlyValue(startDate)) {
+    return 'Please choose a valid start date.';
+  }
+
+  if (!isValidDateOnlyValue(endDate)) {
+    return 'Please choose a valid return date.';
+  }
+
+  if (endDate < startDate) {
+    return 'Return date must be on or after the start date.';
+  }
+
+  if (today && startDate < today) {
+    return 'Start date cannot be in the past.';
+  }
+
+  if (maxLoanDays) {
+    const days = Math.round(
+      (Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86400000
+    ) + 1;
+
+    if (days > maxLoanDays) {
+      return `Loans are limited to ${maxLoanDays} days.`;
+    }
+  }
+
+  const offered = windows.filter((window) => window.kind === 'available');
+
+  if (offered.length && !offered.some((window) => (
+    window.startDate <= startDate && window.endDate >= endDate
+  ))) {
+    return 'That range falls outside the dates this item is offered.';
+  }
+
+  const clash = unavailableRanges.find((range) => (
+    range.startDate <= endDate && startDate <= range.endDate
+  ));
+
+  if (clash) {
+    return `Those dates are unavailable (${clash.startDate} to ${clash.endDate}).`;
+  }
+
+  return '';
+}
+
+function isValidDateOnlyValue(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
 }
 
 export function getReturnMeetupValidationMessage(value) {

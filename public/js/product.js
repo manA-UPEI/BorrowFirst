@@ -1,7 +1,7 @@
 import { mountShell } from './layout.mjs';
 import { getJson } from './api.js';
 import { formatPrice, getCurrentDateTimeLocalValue, getRouteId, getTodayDateValue, redirectTo } from './format.mjs';
-import { getPickupMeetupValidationMessage } from './validate.mjs';
+import { getBookingRangeValidationMessage, getPickupMeetupValidationMessage } from './validate.mjs';
 import { createElement, setImageSource } from './rendering.mjs';
 
 mountShell({ current: 'home' });
@@ -17,7 +17,9 @@ const productPrice = document.getElementById('productPrice');
 const pickupForm = document.getElementById('pickupForm');
 const pickupMeetupInput = document.getElementById('pickupMeetupAt');
 const pickupWindowHint = document.getElementById('pickupWindowHint');
+const startDateInput = document.getElementById('startDate');
 const dueDateInput = document.getElementById('dueDate');
+const availabilityNotice = document.getElementById('availabilityNotice');
 const continueButton = document.getElementById('continueButton');
 const errorElement = document.getElementById('error');
 const todayDateValue = getTodayDateValue();
@@ -26,9 +28,12 @@ const DEFAULT_PRODUCT_IMAGE = '/images/campus-placeholder.svg';
 
 let canRequestProduct = false;
 let pickupOptions = [];
+let availability = { windows: [], unavailableRanges: [], maxLoanDays: 0 };
 let galleryImages = [];
 let currentGalleryIndex = 0;
 
+startDateInput.min = todayDateValue;
+startDateInput.value = todayDateValue;
 dueDateInput.min = todayDateValue;
 dueDateInput.value = todayDateValue;
 pickupMeetupInput.min = currentDateTimeValue;
@@ -47,6 +52,7 @@ function setBorrowFlowState({
   continueButton.disabled = !canRequest;
   continueButton.textContent = buttonText;
   dueDateInput.disabled = disableDueDate;
+  startDateInput.disabled = disableDueDate;
   pickupMeetupInput.disabled = disablePickupMeetup;
   errorElement.textContent = message;
 
@@ -170,6 +176,65 @@ function renderProduct(product) {
   productPrice.textContent = formatPrice(product.Product_Lending_Charge);
 }
 
+function renderAvailabilityNotice() {
+  const offered = availability.windows.filter((window) => window.kind === 'available');
+  const parts = [];
+
+  if (offered.length) {
+    parts.push(`Offered ${offered.map((w) => `${w.startDate} to ${w.endDate}`).join(', ')}.`);
+    // Constrain the pickers to the outer bounds of what the lender offers; the
+    // gaps inside are still caught by validation and listed below.
+    startDateInput.min = offered[0].startDate > todayDateValue ? offered[0].startDate : todayDateValue;
+    startDateInput.max = offered[offered.length - 1].endDate;
+    dueDateInput.max = offered[offered.length - 1].endDate;
+  } else {
+    parts.push('Available any time.');
+  }
+
+  if (availability.unavailableRanges.length) {
+    parts.push(
+      `Already taken: ${availability.unavailableRanges.map((r) => `${r.startDate} to ${r.endDate}`).join(', ')}.`
+    );
+  }
+
+  if (availability.maxLoanDays) {
+    parts.push(`Up to ${availability.maxLoanDays} days per loan.`);
+  }
+
+  availabilityNotice.textContent = parts.join(' ');
+}
+
+async function loadAvailability() {
+  try {
+    availability = await getJson(`/api/products/${productId}/availability`);
+  } catch (error) {
+    // A listing with no availability data is still bookable; the server is
+    // authoritative either way, so this only costs the borrower the preview.
+    availability = { windows: [], unavailableRanges: [], maxLoanDays: 0 };
+  }
+
+  renderAvailabilityNotice();
+}
+
+// The pickup handover must land on the first booked day, so the date half of the
+// meetup follows the start date and only the time is the borrower's to choose.
+function syncPickupMeetupToStartDate() {
+  const startDate = startDateInput.value;
+
+  if (!startDate) {
+    return;
+  }
+
+  if (dueDateInput.value && dueDateInput.value < startDate) {
+    dueDateInput.value = startDate;
+  }
+
+  dueDateInput.min = startDate;
+
+  const currentTime = pickupMeetupInput.value.slice(11, 16) || '10:00';
+  pickupMeetupInput.value = `${startDate}T${currentTime}`;
+}
+
 async function loadPickupOptions() {
   pickupOptions = await getJson(`/api/pickup-options/${productId}`);
 
@@ -260,7 +325,8 @@ async function loadProductPage() {
   }
 
   try {
-    await loadPickupOptions();
+    await Promise.all([loadPickupOptions(), loadAvailability()]);
+    syncPickupMeetupToStartDate();
   } catch (error) {
     setBorrowFlowState({
       canRequest: false,
@@ -281,6 +347,7 @@ continueButton.addEventListener('click', () => {
 
   const selectedOption = pickupForm.querySelector('input[name="pickup"]:checked');
   const pickupMeetupAt = pickupMeetupInput.value;
+  const startDate = startDateInput.value;
   const dueDate = dueDateInput.value;
 
   if (!selectedOption) {
@@ -293,13 +360,25 @@ continueButton.addEventListener('click', () => {
     return;
   }
 
-  if (!dueDate) {
-    errorElement.textContent = 'Please choose a due date.';
+  if (!startDate) {
+    errorElement.textContent = 'Please choose a start date.';
     return;
   }
 
-  if (dueDate < todayDateValue) {
-    errorElement.textContent = 'Due date cannot be in the past.';
+  if (!dueDate) {
+    errorElement.textContent = 'Please choose a return date.';
+    return;
+  }
+
+  const bookingMessage = getBookingRangeValidationMessage(startDate, dueDate, {
+    windows: availability.windows,
+    unavailableRanges: availability.unavailableRanges,
+    maxLoanDays: availability.maxLoanDays,
+    today: todayDateValue
+  });
+
+  if (bookingMessage) {
+    errorElement.textContent = bookingMessage;
     return;
   }
 
@@ -310,7 +389,8 @@ continueButton.addEventListener('click', () => {
     pickupMeetupAt,
     selectedPickupOption?.start_time,
     selectedPickupOption?.end_time,
-    dueDate
+    dueDate,
+    startDate
   );
 
   if (pickupMeetupMessage) {
@@ -319,9 +399,13 @@ continueButton.addEventListener('click', () => {
   }
 
   redirectTo(
-    `/confirm/${productId}?slot=${selectedOption.value}&dueDate=${encodeURIComponent(dueDate)}&pickupMeetupAt=${encodeURIComponent(pickupMeetupAt)}`
+    `/confirm/${productId}?slot=${selectedOption.value}`
+    + `&startDate=${encodeURIComponent(startDate)}`
+    + `&dueDate=${encodeURIComponent(dueDate)}`
+    + `&pickupMeetupAt=${encodeURIComponent(pickupMeetupAt)}`
   );
 });
 
 pickupForm.addEventListener('change', updatePickupWindowHint);
+startDateInput.addEventListener('change', syncPickupMeetupToStartDate);
 loadProductPage();

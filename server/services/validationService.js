@@ -10,6 +10,9 @@ const PASSWORD_MAX_LENGTH = 128;
 const PRODUCT_NAME_MAX_LENGTH = 100;
 const PRODUCT_DESCRIPTION_MAX_LENGTH = 1000;
 const ALLOWED_PRODUCT_CONDITIONS = new Set(['Excellent', 'Good', 'Fair']);
+const PICKUP_LOCATION_MAX_LENGTH = 80;
+const MAX_PICKUP_WINDOWS = 5;
+const MAX_AVAILABILITY_WINDOWS = 20;
 
 function normalizeEmail(email) {
   return typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -243,6 +246,166 @@ function validateProductCondition(condition) {
   return '';
 }
 
+// Multipart form parts arrive as strings, JSON bodies as arrays. Accept either so
+// the listing form can post images and structured fields in one request.
+function parseStructuredList(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value !== 'string' || !value.trim()) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function isValidDateOnly(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+}
+
+// The pickup/meetup validators downstream parse "hh:mm AM" (see
+// createBorrowRequest parseTime), but a browser time input submits 24-hour
+// "HH:MM". Normalize here so storage keeps one format.
+function formatTimeLabel(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+
+  if (!match) {
+    return '';
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+
+  if (!Number.isInteger(hours) || hours < 0 || hours > 23) {
+    return '';
+  }
+
+  if (!Number.isInteger(minutes) || minutes < 0 || minutes > 59) {
+    return '';
+  }
+
+  const suffix = hours < 12 ? 'AM' : 'PM';
+  const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+
+  return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${suffix}`;
+}
+
+function toMinutes(label) {
+  const match = label.match(/^(\d{2}):(\d{2}) (AM|PM)$/);
+  let hours = Number(match[1]) % 12;
+
+  if (match[3] === 'PM') {
+    hours += 12;
+  }
+
+  return hours * 60 + Number(match[2]);
+}
+
+function getValidatedPickupWindows(value) {
+  const entries = parseStructuredList(value);
+
+  if (entries === null) {
+    return { message: 'Pickup windows are invalid' };
+  }
+
+  if (!entries.length) {
+    return { message: '', pickupWindows: [] };
+  }
+
+  if (entries.length > MAX_PICKUP_WINDOWS) {
+    return { message: `Add at most ${MAX_PICKUP_WINDOWS} pickup windows` };
+  }
+
+  const pickupWindows = [];
+
+  for (const entry of entries) {
+    const location = normalizeCollapsedText(entry?.location);
+
+    if (!location) {
+      return { message: 'Every pickup window needs a location' };
+    }
+
+    if (location.length > PICKUP_LOCATION_MAX_LENGTH) {
+      return { message: `Pickup location must be ${PICKUP_LOCATION_MAX_LENGTH} characters or fewer` };
+    }
+
+    const startTime = formatTimeLabel(entry?.startTime);
+    const endTime = formatTimeLabel(entry?.endTime);
+
+    if (!startTime || !endTime) {
+      return { message: 'Pickup window times must look like 09:00' };
+    }
+
+    if (toMinutes(endTime) <= toMinutes(startTime)) {
+      return { message: 'Pickup window must end after it starts' };
+    }
+
+    pickupWindows.push({ location, startTime, endTime });
+  }
+
+  return { message: '', pickupWindows };
+}
+
+function getValidatedAvailability(value) {
+  const entries = parseStructuredList(value);
+
+  if (entries === null) {
+    return { message: 'Availability dates are invalid' };
+  }
+
+  if (!entries.length) {
+    return { message: '', availability: [] };
+  }
+
+  if (entries.length > MAX_AVAILABILITY_WINDOWS) {
+    return { message: `Add at most ${MAX_AVAILABILITY_WINDOWS} availability ranges` };
+  }
+
+  const availability = [];
+
+  for (const entry of entries) {
+    const kind = entry?.kind === 'blackout' ? 'blackout' : 'available';
+    const startDate = typeof entry?.startDate === 'string' ? entry.startDate.trim() : '';
+    const endDate = typeof entry?.endDate === 'string' ? entry.endDate.trim() : '';
+
+    if (!isValidDateOnly(startDate) || !isValidDateOnly(endDate)) {
+      return { message: 'Availability dates must look like 2026-03-01' };
+    }
+
+    if (endDate < startDate) {
+      return { message: 'Availability range must end on or after it starts' };
+    }
+
+    availability.push({ kind, startDate, endDate });
+  }
+
+  if (!availability.some((entry) => entry.kind === 'available')
+    && availability.some((entry) => entry.kind === 'blackout')) {
+    return { message: 'Add an availability range before blocking dates out of it' };
+  }
+
+  return { message: '', availability };
+}
+
 function getValidatedProductFields({ name, description, condition, price, imageUrl }) {
   const normalizedName = normalizeCollapsedText(name);
   const normalizedDescription = normalizeMultilineText(description);
@@ -308,6 +471,11 @@ module.exports = {
   PRODUCT_NAME_MAX_LENGTH,
   PRODUCT_DESCRIPTION_MAX_LENGTH,
   ALLOWED_PRODUCT_CONDITIONS,
+  MAX_PICKUP_WINDOWS,
+  MAX_AVAILABILITY_WINDOWS,
+  formatTimeLabel,
+  getValidatedPickupWindows,
+  getValidatedAvailability,
   normalizeEmail,
   normalizeCollapsedText,
   normalizeMultilineText,

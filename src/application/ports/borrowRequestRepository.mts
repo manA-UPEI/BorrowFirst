@@ -16,6 +16,10 @@ export interface BorrowRequestRepository {
   findProduct(productId: number): Promise<BorrowRequestProduct | null>;
   ensurePickupOptions(productId: number): Promise<void>;
   listPickupOptions(productId: number): Promise<readonly PickupOption[]>;
+  /** Raw availability rows; shapes are normalized by the booking domain. */
+  listAvailabilityWindows(productId: number): Promise<readonly Record<string, unknown>[]>;
+  /** Date ranges already committed to on this product. */
+  listBookedRanges(productId: number): Promise<readonly Record<string, unknown>[]>;
   findPendingRequest(productId: number, borrowerId: number): Promise<boolean>;
   createRequest(input: {
     productId: number;
@@ -23,6 +27,7 @@ export interface BorrowRequestRepository {
     borrowerId: number;
     pickupOption: number;
     pickupMeetupAt: string;
+    startDate: string;
     dueDate: string;
   }): Promise<number>;
 }

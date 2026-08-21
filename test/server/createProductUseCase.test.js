@@ -6,7 +6,9 @@ test('create product use case uploads images, marks the cover, and persists the 
   const calls = [];
   const useCase = createProductUseCase({
     validateFields: () => ({ name: 'Camera', description: 'Kit', condition: 'Good', price: 10, imageUrl: '' }),
-    validateCoverIndex: () => ({ coverIndex: 1 })
+    validateCoverIndex: () => ({ coverIndex: 1 }),
+    validatePickupWindows: () => ({ message: '', pickupWindows: [] }),
+    validateAvailability: () => ({ message: '', availability: [] })
   }, {
     createProduct: async () => 42,
     addProductImage: async (input) => calls.push(['image', input.sortOrder, input.isCover]),
